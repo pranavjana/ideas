@@ -86,6 +86,9 @@ struct ContentView: View {
     @State private var searchText = ""
     @State private var aiInputMode = false
     @State private var isAiProcessing = false
+    @State private var selectedIdea: Idea? = nil
+    @State private var ideaToDelete: Idea? = nil
+    @State private var showDeleteConfirm = false
     @FocusState private var isInputFocused: Bool
 
     private var filteredIdeas: [Idea] {
@@ -139,7 +142,16 @@ struct ContentView: View {
         #if os(macOS)
         HStack(spacing: 0) {
             sidebar
-            mainContent
+
+            if let idea = selectedIdea {
+                IdeaEditorPanel(idea: idea) {
+                    withAnimation(.easeOut(duration: 0.35)) { selectedIdea = nil }
+                }
+                .id(idea.id)
+                .transition(.move(edge: .trailing).combined(with: .opacity))
+            } else {
+                mainContent
+            }
         }
         .environment(\.tagColors, profiles.first?.tagColors ?? [:])
         .frame(maxWidth: .infinity, maxHeight: .infinity)
@@ -149,6 +161,27 @@ struct ContentView: View {
             Button("") { currentPage = .settings }
                 .keyboardShortcut(",", modifiers: .command)
                 .hidden()
+        }
+        .alert("Delete idea?", isPresented: $showDeleteConfirm) {
+            Button("Cancel", role: .cancel) {
+                ideaToDelete = nil
+            }
+            Button("Delete", role: .destructive) {
+                if let idea = ideaToDelete {
+                    if selectedIdea?.id == idea.id {
+                        selectedIdea = nil
+                    }
+                    withAnimation(.easeOut(duration: 0.2)) {
+                        modelContext.delete(idea)
+                        try? modelContext.save()
+                    }
+                    ideaToDelete = nil
+                }
+            }
+        } message: {
+            if let idea = ideaToDelete {
+                Text("\(idea.text) will be permanently deleted.")
+            }
         }
         #else
         NavigationSplitView {
@@ -289,25 +322,28 @@ struct ContentView: View {
 
     private var ideasPage: some View {
         #if os(macOS)
-        VStack(spacing: 0) {
-            ideasToolbar
+        HStack(spacing: 0) {
+            VStack(spacing: 0) {
+                ideasToolbar
 
-            if ideasLayout == .list {
-                ideasListContent
-            } else {
-                ideasBoardContent
-            }
-
-            aiResponseCard
-
-            ideasInputBar
-                .overlay(alignment: .top) {
-                    Rectangle()
-                        .fill(Color.white.opacity(0.06))
-                        .frame(height: 1)
+                if ideasLayout == .list {
+                    ideasListContent
+                } else {
+                    ideasBoardContent
                 }
+
+                aiResponseCard
+
+                ideasInputBar
+                    .overlay(alignment: .top) {
+                        Rectangle()
+                            .fill(Color.white.opacity(0.06))
+                            .frame(height: 1)
+                    }
+            }
+            .frame(maxWidth: .infinity, maxHeight: .infinity)
+
         }
-        .frame(maxWidth: .infinity, maxHeight: .infinity)
         .background(Color(red: 0.09, green: 0.09, blue: 0.09))
         #else
         iOSIdeasPage
@@ -374,6 +410,21 @@ struct ContentView: View {
                         .font(.system(size: 14))
                 }
             }
+        }
+        .sheet(item: $selectedIdea) { idea in
+            NavigationStack {
+                IdeaEditorPanel(idea: idea) {
+                    selectedIdea = nil
+                }
+                .toolbar {
+                    ToolbarItem(placement: .topBarLeading) {
+                        Button("done") { selectedIdea = nil }
+                            .font(.custom("Switzer-Medium", size: 15))
+                    }
+                }
+            }
+            .presentationDetents([.large])
+            .presentationDragIndicator(.visible)
         }
     }
 
@@ -495,6 +546,22 @@ struct ContentView: View {
     }
 
     private func handleIdeasSubmit() {
+        let trimmed = inputText.trimmingCharacters(in: .whitespacesAndNewlines)
+
+        // Seed demo ideas for product showcase
+        if trimmed.lowercased() == "demo" {
+            inputText = ""
+            seedDemoIdeas()
+            return
+        }
+
+        // Clear demo ideas
+        if trimmed.lowercased() == "clear demo" {
+            inputText = ""
+            clearDemoIdeas()
+            return
+        }
+
         if aiInputMode {
             let text = inputText
             inputText = ""
@@ -502,7 +569,6 @@ struct ContentView: View {
             Task {
                 await chatViewModel?.sendSilent(text)
                 withAnimation(.easeOut(duration: 0.2)) { isAiProcessing = false }
-                // Keep response visible briefly, then fade out
                 try? await Task.sleep(for: .seconds(5))
                 withAnimation(.easeOut(duration: 0.4)) {
                     chatViewModel?.silentResponseText = ""
@@ -512,6 +578,140 @@ struct ContentView: View {
             viewModel?.addIdea(inputText)
             inputText = ""
         }
+    }
+
+    private func seedDemoIdeas() {
+        let demoData: [(text: String, tags: [String], category: String, priority: Int, subtasks: [String], done: Bool)] = [
+            (
+                "Redesign onboarding flow with progressive disclosure",
+                ["design", "ux"],
+                "product",
+                1,
+                ["todo|||Audit current onboarding steps", "todo|||Sketch new flow wireframes", "done|||Benchmark competitor onboarding", "todo|||User test prototype with 5 users"],
+                false
+            ),
+            (
+                "Ship dark mode across all screens",
+                ["design", "engineering"],
+                "feature",
+                2,
+                ["done|||Create dark color palette tokens", "done|||Update navigation components", "todo|||Update settings & profile screens", "todo|||QA pass on all 12 screens"],
+                false
+            ),
+            (
+                "Set up error tracking with Sentry",
+                ["engineering", "devops"],
+                "infrastructure",
+                2,
+                ["done|||Install Sentry SDK", "todo|||Configure source maps", "todo|||Set up Slack alert channel"],
+                false
+            ),
+            (
+                "Write blog post: How we built our AI tagging system",
+                ["marketing", "content"],
+                "growth",
+                3,
+                ["todo|||Draft outline", "todo|||Write first draft", "todo|||Add screenshots and diagrams"],
+                false
+            ),
+            (
+                "Migrate database to connection pooling",
+                ["engineering", "devops"],
+                "infrastructure",
+                2,
+                [],
+                false
+            ),
+            (
+                "Customer interview: enterprise workflow needs",
+                ["research", "product"],
+                "discovery",
+                3,
+                ["done|||Schedule call with Acme Corp", "done|||Prepare interview script", "todo|||Summarize findings"],
+                false
+            ),
+            (
+                "Add keyboard shortcuts for power users",
+                ["engineering", "ux"],
+                "feature",
+                4,
+                ["todo|||Define shortcut map", "todo|||Implement global listener", "todo|||Add shortcuts cheat sheet overlay"],
+                false
+            ),
+            (
+                "Weekly team sync — sprint planning",
+                ["team"],
+                "process",
+                0,
+                [],
+                true
+            ),
+            (
+                "Implement graph view clustering for large idea counts",
+                ["engineering", "design"],
+                "feature",
+                3,
+                ["todo|||Research force-directed layout algorithms", "todo|||Prototype cluster grouping", "todo|||Animate cluster expand/collapse"],
+                false
+            ),
+            (
+                "Competitive analysis: Notion, Linear, Obsidian",
+                ["research", "product"],
+                "strategy",
+                4,
+                ["done|||Feature matrix spreadsheet", "done|||Pricing comparison", "todo|||Write positioning memo"],
+                false
+            ),
+        ]
+
+        let cal = Calendar.current
+        let now = Date()
+
+        for (i, data) in demoData.enumerated() {
+            let idea = Idea(text: data.text)
+            idea.tags = data.tags + [Idea.demoTag]
+            idea.category = data.category
+            idea.priority = data.priority
+            idea.subtasks = data.subtasks
+            idea.isDone = data.done
+            idea.isProcessing = false
+
+            // Stagger creation dates so they look natural
+            idea.createdAt = cal.date(byAdding: .hour, value: -(i * 6 + Int.random(in: 0...3)), to: now) ?? now
+
+            // Sprinkle due dates on some
+            if i == 0 {
+                idea.dueDate = cal.date(byAdding: .day, value: 1, to: now)
+            } else if i == 2 {
+                idea.dueDate = cal.date(byAdding: .day, value: 3, to: now)
+            } else if i == 7 {
+                idea.dueDate = cal.startOfDay(for: now)
+                idea.recurringPattern = "weekly"
+            }
+
+            // Graph positions — spread in a grid
+            let col = Double(i % 4)
+            let row = Double(i / 4)
+            idea.positionX = col * 220 - 330 + Double.random(in: -30...30)
+            idea.positionY = row * 200 - 200 + Double.random(in: -30...30)
+
+            withAnimation(.easeOut(duration: 0.25).delay(Double(i) * 0.05)) {
+                modelContext.insert(idea)
+            }
+        }
+
+        try? modelContext.save()
+    }
+
+    private func clearDemoIdeas() {
+        let demoIdeas = ideas.filter { $0.isDemo }
+        for idea in demoIdeas {
+            withAnimation(.easeOut(duration: 0.2)) {
+                modelContext.delete(idea)
+            }
+        }
+        try? modelContext.save()
+        selectedIdea = nil
     }
 
     // macOS-only toolbar (iOS uses native .searchable + inline toolbar in iOSIdeasPage)
@@ -605,15 +805,7 @@ struct ContentView: View {
         ScrollView {
             LazyVStack(alignment: .leading, spacing: 0) {
                 ForEach(sortedIdeas) { idea in
-                    IdeaRow(idea: idea)
-                        #if os(macOS)
-                        .padding(.horizontal, 24)
-                        .padding(.vertical, 14)
-                        #else
-                        .padding(.horizontal, 16)
-                        .padding(.vertical, 12)
-                        #endif
-                        .transition(.opacity.combined(with: .move(edge: .top)))
+                    ideaListRow(idea: idea)
                 }
             }
             .padding(.top, 8)
@@ -622,12 +814,37 @@ struct ContentView: View {
         .defaultScrollAnchor(.top)
     }
 
+    private func ideaListRow(idea: Idea) -> some View {
+        let isSelected = selectedIdea?.id == idea.id
+        return IdeaRow(idea: idea, isSelected: isSelected) {
+            withAnimation(.easeOut(duration: 0.35)) {
+                selectedIdea = isSelected ? nil : idea
+            }
+        }
+        #if os(macOS)
+        .padding(.horizontal, 24)
+        .padding(.vertical, 14)
+        #else
+        .padding(.horizontal, 16)
+        .padding(.vertical, 12)
+        #endif
+        .transition(.opacity.combined(with: .move(edge: .top)))
+        .contextMenu {
+            Button(role: .destructive) {
+                ideaToDelete = idea
+                showDeleteConfirm = true
+            } label: {
+                Label("Delete", systemImage: "trash")
+            }
+        }
+    }
+
     // MARK: - Board Content
 
     private var boardColumns: [(tag: String, ideas: [Idea])] {
         var grouped: [String: [Idea]] = [:]
         for idea in filteredIdeas {
-            let key = idea.tags.first ?? "untagged"
+            let key = idea.visibleTags.first ?? "untagged"
             grouped[key, default: []].append(idea)
         }
         return grouped
@@ -648,6 +865,10 @@ struct ContentView: View {
                 Section {
                     ForEach(column.ideas) { idea in
                         boardCard(idea: idea)
+                            .contentShape(Rectangle())
+                            .onTapGesture {
+                                selectedIdea = idea
+                            }
                             .listRowBackground(Color.clear)
                             .listRowInsets(EdgeInsets(top: 4, leading: 16, bottom: 4, trailing: 16))
                     }
@@ -715,6 +936,12 @@ struct ContentView: View {
                 LazyVStack(spacing: 6) {
                     ForEach(ideas) { idea in
                         boardCard(idea: idea)
+                            .contentShape(Rectangle())
+                            .onTapGesture {
+                                withAnimation(.easeOut(duration: 0.2)) {
+                                    selectedIdea = selectedIdea?.id == idea.id ? nil : idea
+                                }
+                            }
                     }
                 }
                 .padding(.horizontal, 10)
@@ -764,7 +991,7 @@ struct ContentView: View {
                 if idea.tags.count > 1 {
                     let tc = profiles.first?.tagColors ?? [:]
                     HStack(spacing: 4) {
-                        ForEach(idea.tags.dropFirst(), id: \.self) { tag in
+                        ForEach(idea.visibleTags.dropFirst(), id: \.self) { tag in
                             let tagColor = tc[tag].flatMap { Color(hex: $0) }
                             Text(tag)
                                 .font(.custom("Switzer-Light", size: 9))
@@ -816,17 +1043,7 @@ struct ContentView: View {
     }
 
     private func handleBoardCheckbox(idea: Idea) {
-        if idea.recurring != nil && !idea.isDone {
-            withAnimation(.easeOut(duration: 0.15)) { idea.isDone = true }
-            if let next = idea.nextDueDate() {
-                idea.dueDate = next
-            }
-            DispatchQueue.main.asyncAfter(deadline: .now() + 0.4) {
-                withAnimation(.easeOut(duration: 0.15)) { idea.isDone = false }
-            }
-        } else {
-            withAnimation(.easeOut(duration: 0.15)) { idea.isDone.toggle() }
-        }
+        idea.animatedToggleDone()
     }
 }
 
@@ -835,6 +1052,8 @@ struct ContentView: View {
 struct IdeaRow: View {
     @Environment(\.tagColors) private var tagColors
     @Bindable var idea: Idea
+    var isSelected: Bool = false
+    var onTap: (() -> Void)? = nil
     @State private var showDatePicker = false
     @State private var showUpdates = false
 
@@ -866,6 +1085,8 @@ struct IdeaRow: View {
                         ? (rowAccent?.opacity(0.3) ?? Color.white.opacity(0.3))
                         : (rowAccent?.opacity(0.9) ?? Color.white.opacity(0.85)))
                     .strikethrough(idea.isDone, color: (rowAccent ?? .white).opacity(0.2))
+                    .contentShape(Rectangle())
+                    .onTapGesture { onTap?() }
 
                 if idea.isProcessing {
                     Text("...")
@@ -889,7 +1110,7 @@ struct IdeaRow: View {
                     }
 
                     if !idea.isProcessing {
-                        ForEach(idea.tags, id: \.self) { tag in
+                        ForEach(idea.visibleTags, id: \.self) { tag in
                             let tagColor = tagColors[tag].flatMap { Color(hex: $0) }
                             Text(tag)
                                 .font(.custom("Switzer-Light", size: 10))
@@ -998,6 +1219,12 @@ struct IdeaRow: View {
                 }
             }
         }
+        .padding(isSelected ? 10 : 0)
+        .background(
+            RoundedRectangle(cornerRadius: 8)
+                .fill(isSelected ? (rowAccent ?? .white).opacity(0.06) : Color.clear)
+        )
+        .contentShape(Rectangle())
     }
 
     @ViewBuilder
@@ -1038,18 +1265,7 @@ struct IdeaRow: View {
     }
 
     private func handleCheckboxToggle() {
-        if idea.recurring != nil && !idea.isDone {
-            // Recurring idea: advance to next date, flash done briefly
-            withAnimation(.easeOut(duration: 0.15)) { idea.isDone = true }
-            if let next = idea.nextDueDate() {
-                idea.dueDate = next
-            }
-            DispatchQueue.main.asyncAfter(deadline: .now() + 0.4) {
-                withAnimation(.easeOut(duration: 0.15)) { idea.isDone = false }
-            }
-        } else {
-            withAnimation(.easeOut(duration: 0.15)) { idea.isDone.toggle() }
-        }
+        idea.animatedToggleDone()
     }
 }
 

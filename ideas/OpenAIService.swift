@@ -14,6 +14,7 @@ struct OpenAIService {
         let content: String?
         var toolCallId: String?
         var toolCalls: [[String: Any]]?
+        var imageBase64: String?
 
         init(role: String, content: String) {
             self.role = role
@@ -28,7 +29,34 @@ struct OpenAIService {
 
         func toDict() -> [String: Any] {
             var dict: [String: Any] = ["role": role]
-            if let content { dict["content"] = content }
+
+            if let imageBase64 {
+                // Multimodal content array
+                var contentArray: [[String: Any]] = []
+                if let content, !content.isEmpty {
+                    contentArray.append(["type": "text", "text": content])
+                }
+                let mime: String
+                if imageBase64.hasPrefix("/9j/") {
+                    mime = "image/jpeg"
+                } else if imageBase64.hasPrefix("iVBOR") {
+                    mime = "image/png"
+                } else if imageBase64.hasPrefix("R0lG") {
+                    mime = "image/gif"
+                } else if imageBase64.hasPrefix("UklGR") {
+                    mime = "image/webp"
+                } else {
+                    mime = "image/png"
+                }
+                contentArray.append([
+                    "type": "image_url",
+                    "image_url": ["url": "data:\(mime);base64,\(imageBase64)"]
+                ])
+                dict["content"] = contentArray
+            } else if let content {
+                dict["content"] = content
+            }
+
             if let toolCallId { dict["tool_call_id"] = toolCallId }
             if let toolCalls { dict["tool_calls"] = toolCalls }
             return dict

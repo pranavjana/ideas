@@ -25,15 +25,36 @@ struct ChatBubble: View {
                 .textCase(.uppercase)
                 .tracking(1.5)
 
-            Text(message.content)
-                .font(.custom("Switzer-Regular", size: 14))
-                .foregroundStyle(Color.white.opacity(0.85))
-                .lineSpacing(4)
-                .textSelection(.enabled)
-                .padding(.horizontal, 14)
-                .padding(.vertical, 10)
-                .background(Color.white.opacity(0.08))
-                .clipShape(RoundedRectangle(cornerRadius: 8))
+            // Show attached image
+            #if os(macOS)
+            if let imageData = message.imageData, let nsImage = NSImage(data: imageData) {
+                Image(nsImage: nsImage)
+                    .resizable()
+                    .aspectRatio(contentMode: .fit)
+                    .frame(maxWidth: 300, maxHeight: 200)
+                    .clipShape(RoundedRectangle(cornerRadius: 8))
+            }
+            #else
+            if let imageData = message.imageData, let uiImage = UIImage(data: imageData) {
+                Image(uiImage: uiImage)
+                    .resizable()
+                    .aspectRatio(contentMode: .fit)
+                    .frame(maxWidth: 300, maxHeight: 200)
+                    .clipShape(RoundedRectangle(cornerRadius: 8))
+            }
+            #endif
+
+            if !message.content.isEmpty {
+                Text(message.content)
+                    .font(.custom("Switzer-Regular", size: 14))
+                    .foregroundStyle(Color.white.opacity(0.85))
+                    .lineSpacing(4)
+                    .textSelection(.enabled)
+                    .padding(.horizontal, 14)
+                    .padding(.vertical, 10)
+                    .background(Color.white.opacity(0.08))
+                    .clipShape(RoundedRectangle(cornerRadius: 8))
+            }
 
             Text(message.timestamp.formatted(.dateTime.hour().minute()))
                 .font(.custom("Switzer-Light", size: 10))

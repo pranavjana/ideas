@@ -8,6 +8,7 @@ struct ChatMessage: Identifiable {
     var toolCallId: String?
     var toolName: String?
     var toolCalls: [ToolCall]?
+    var imageData: Data?
 
     enum Role {
         case user
@@ -26,6 +27,8 @@ struct ChatMessage: Identifiable {
             case "search_ideas": return "search ideas"
             case "update_idea": return "update idea"
             case "delete_idea": return "delete idea"
+            case "write_notes": return "writing notes"
+            case "read_notes": return "reading notes"
             default: return name
             }
         }
@@ -36,6 +39,8 @@ struct ChatMessage: Identifiable {
             case "search_ideas": return "magnifyingglass"
             case "update_idea": return "pencil.circle"
             case "delete_idea": return "trash.circle"
+            case "write_notes": return "doc.text"
+            case "read_notes": return "doc.text.magnifyingglass"
             default: return "wrench"
             }
         }
@@ -78,10 +83,11 @@ struct ChatMessage: Identifiable {
         return (true, "done")
     }
 
-    init(role: Role, content: String) {
+    init(role: Role, content: String, imageData: Data? = nil) {
         self.role = role
         self.content = content
         self.timestamp = Date()
+        self.imageData = imageData
     }
 
     init(toolResult: String, toolCallId: String, toolName: String) {

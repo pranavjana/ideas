@@ -18,7 +18,7 @@ class ChatViewModel {
         self.modelContext = modelContext
     }
 
-    func sendMessage(_ text: String, model: String = "anthropic/claude-haiku-4.5") async {
+    func sendMessage(_ text: String, model: String = "anthropic/claude-haiku-4.5", imageData: Data? = nil) async {
         let trimmed = text.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !trimmed.isEmpty else { return }
 
@@ -28,7 +28,7 @@ class ChatViewModel {
         }
 
         // Add user message
-        messages.append(ChatMessage(role: .user, content: trimmed))
+        messages.append(ChatMessage(role: .user, content: trimmed, imageData: imageData))
 
         isStreaming = true
         errorMessage = nil
@@ -284,7 +284,14 @@ class ChatViewModel {
         for msg in messages {
             switch msg.role {
             case .user:
-                apiMessages.append(OpenAIService.Message(role: "user", content: msg.content))
+                if let imageData = msg.imageData {
+                    let base64 = imageData.base64EncodedString()
+                    var m = OpenAIService.Message(role: "user", content: msg.content)
+                    m.imageBase64 = base64
+                    apiMessages.append(m)
+                } else {
+                    apiMessages.append(OpenAIService.Message(role: "user", content: msg.content))
+                }
 
             case .assistant:
                 if let toolCalls = msg.toolCalls, !toolCalls.isEmpty {
@@ -399,6 +406,7 @@ class ChatViewModel {
         Use add_update when the user reports progress or changes on an idea — this adds a timestamped note that appears in the idea's update log. \
         Use add_subtask to break ideas into actionable steps. Use toggle_subtask to mark subtasks done/undone, and remove_subtask to delete them. \
         You can set priority levels (urgent/high/medium/low/none) on ideas via update_idea. When the user gives context like "focus on school this week" or "exams coming up", call update_idea for each relevant idea to set appropriate priorities. \
+        You can read and write markdown notes on any idea using read_notes and write_notes. Use these to help users develop detailed notes, outlines, and structured content for their ideas. \
         Be concise and thoughtful. Reference specific ideas when relevant.
         """)
 
@@ -415,6 +423,8 @@ class ChatViewModel {
         case "add_subtask": return "adding subtasks..."
         case "toggle_subtask": return "toggling subtask..."
         case "remove_subtask": return "removing subtask..."
+        case "write_notes": return "writing notes..."
+        case "read_notes": return "reading notes..."
         default: return "working..."
         }
     }

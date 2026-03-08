@@ -1,5 +1,6 @@
 import SwiftUI
 import SwiftData
+import UniformTypeIdentifiers
 
 struct AIModel: Identifiable, Hashable {
     let id: String  // OpenRouter model ID
@@ -21,6 +22,8 @@ struct ChatView: View {
     @State private var chatViewModel: ChatViewModel?
     @State private var inputText = ""
     @State private var selectedModel: AIModel = AIModel.available[0]
+    @State private var selectedImageData: Data? = nil
+    @State private var showImagePicker = false
     @FocusState private var isInputFocused: Bool
 
     var body: some View {
@@ -190,23 +193,68 @@ struct ChatView: View {
     // MARK: - Input Bars
 
     private var chatInputBar: some View {
-        HStack(spacing: 8) {
-            TextField("ask about your ideas...", text: $inputText)
-                .textFieldStyle(.plain)
-                .font(.custom("Switzer-Regular", size: 15))
-                .foregroundStyle(Color.white.opacity(0.9))
-                .focused($isInputFocused)
-                .onSubmit { sendMessage() }
-                .disabled(chatViewModel?.isStreaming ?? false)
+        VStack(spacing: 0) {
+            #if os(macOS)
+            if let imageData = selectedImageData, let nsImage = NSImage(data: imageData) {
+                HStack(spacing: 8) {
+                    Image(nsImage: nsImage)
+                        .resizable()
+                        .aspectRatio(contentMode: .fill)
+                        .frame(width: 60, height: 60)
+                        .clipShape(RoundedRectangle(cornerRadius: 8))
 
-            if chatViewModel?.isStreaming ?? false {
-                ProgressView()
-                    .scaleEffect(0.6)
-                    .frame(width: 16, height: 16)
+                    Button {
+                        selectedImageData = nil
+                    } label: {
+                        Image(systemName: "xmark.circle.fill")
+                            .font(.system(size: 14))
+                            .foregroundStyle(Color.white.opacity(0.4))
+                    }
+                    .buttonStyle(.plain)
+
+                    Spacer()
+                }
+                .padding(.horizontal, 32)
+                .padding(.bottom, 4)
             }
+            #endif
+
+            HStack(spacing: 8) {
+                #if os(macOS)
+                // Image attach button
+                Button {
+                    let panel = NSOpenPanel()
+                    panel.allowedContentTypes = [.image]
+                    panel.allowsMultipleSelection = false
+                    if panel.runModal() == .OK, let url = panel.url,
+                       let data = try? Data(contentsOf: url) {
+                        selectedImageData = data
+                    }
+                } label: {
+                    Image(systemName: "photo")
+                        .font(.system(size: 14))
+                        .foregroundStyle(Color.white.opacity(selectedImageData != nil ? 0.7 : 0.25))
+                }
+                .buttonStyle(.plain)
+                #endif
+
+                TextField("ask about your ideas...", text: $inputText)
+                    .textFieldStyle(.plain)
+                    .font(.custom("Switzer-Regular", size: 15))
+                    .foregroundStyle(Color.white.opacity(0.9))
+                    .focused($isInputFocused)
+                    .onSubmit { sendMessage() }
+                    .disabled(chatViewModel?.isStreaming ?? false)
+
+                if chatViewModel?.isStreaming ?? false {
+                    ProgressView()
+                        .scaleEffect(0.6)
+                        .frame(width: 16, height: 16)
+                }
+            }
+            .padding(.horizontal, 32)
+            .padding(.vertical, 16)
         }
-        .padding(.horizontal, 32)
-        .padding(.vertical, 16)
     }
 
     #if os(iOS)
@@ -249,9 +297,11 @@ struct ChatView: View {
 
     private func sendMessage() {
         let text = inputText
+        let imageData = selectedImageData
         inputText = ""
+        selectedImageData = nil
         Task {
-            await chatViewModel?.sendMessage(text, model: selectedModel.id)
+            await chatViewModel?.sendMessage(text, model: selectedModel.id, imageData: imageData)
         }
     }
 }

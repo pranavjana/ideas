@@ -1,4 +1,5 @@
 import Foundation
+import SwiftUI
 import SwiftData
 
 struct IdeaTools {
@@ -132,6 +133,35 @@ struct IdeaTools {
                     "required": ["search", "subtask"]
                 ] as [String: Any]
             ] as [String: Any]
+        ],
+        [
+            "type": "function",
+            "function": [
+                "name": "write_notes",
+                "description": "Write or replace markdown notes on an existing idea. Use this to help users develop detailed notes, outlines, and structured content for their ideas.",
+                "parameters": [
+                    "type": "object",
+                    "properties": [
+                        "search": ["type": "string", "description": "Text to find the idea (partial match)"],
+                        "content": ["type": "string", "description": "Markdown content to write as the idea's notes"]
+                    ] as [String: Any],
+                    "required": ["search", "content"]
+                ] as [String: Any]
+            ] as [String: Any]
+        ],
+        [
+            "type": "function",
+            "function": [
+                "name": "read_notes",
+                "description": "Read the current notes of an idea. Use this to see what notes already exist before updating them.",
+                "parameters": [
+                    "type": "object",
+                    "properties": [
+                        "search": ["type": "string", "description": "Text to find the idea (partial match)"]
+                    ],
+                    "required": ["search"]
+                ] as [String: Any]
+            ] as [String: Any]
         ]
     ]
 
@@ -167,6 +197,10 @@ struct IdeaTools {
             return executeToggleSubtask(args: args, modelContext: modelContext)
         case "remove_subtask":
             return executeRemoveSubtask(args: args, modelContext: modelContext)
+        case "write_notes":
+            return executeWriteNotes(args: args, modelContext: modelContext)
+        case "read_notes":
+            return executeReadNotes(args: args, modelContext: modelContext)
         default:
             return "{\"error\": \"unknown tool: \(name)\"}"
         }
@@ -503,6 +537,56 @@ struct IdeaTools {
         try? modelContext.save()
 
         return "{\"success\": true, \"message\": \"Removed subtask '\(removedText)' from: \(idea.text)\"}"
+    }
+
+    // MARK: - Notes
+
+    @MainActor
+    private static func executeWriteNotes(args: [String: Any], modelContext: ModelContext) -> String {
+        guard let search = args["search"] as? String, !search.isEmpty else {
+            return "{\"error\": \"missing 'search' parameter\"}"
+        }
+        guard let content = args["content"] as? String else {
+            return "{\"error\": \"missing 'content' parameter\"}"
+        }
+
+        let descriptor = FetchDescriptor<Idea>()
+        guard let allIdeas = try? modelContext.fetch(descriptor) else {
+            return "{\"error\": \"could not fetch ideas\"}"
+        }
+
+        let lowercaseSearch = search.lowercased()
+        guard let idea = allIdeas.first(where: { $0.text.lowercased().contains(lowercaseSearch) }) else {
+            return "{\"error\": \"no idea found matching '\(search)'\"}"
+        }
+
+        idea.attributedNotes = AttributedString(content)
+        try? modelContext.save()
+
+        return "{\"success\": true, \"message\": \"Notes updated for: \(idea.text) (\(content.count) chars)\"}"
+    }
+
+    @MainActor
+    private static func executeReadNotes(args: [String: Any], modelContext: ModelContext) -> String {
+        guard let search = args["search"] as? String, !search.isEmpty else {
+            return "{\"error\": \"missing 'search' parameter\"}"
+        }
+
+        let descriptor = FetchDescriptor<Idea>()
+        guard let allIdeas = try? modelContext.fetch(descriptor) else {
+            return "{\"error\": \"could not fetch ideas\"}"
+        }
+
+        let lowercaseSearch = search.lowercased()
+        guard let idea = allIdeas.first(where: { $0.text.lowercased().contains(lowercaseSearch) }) else {
+            return "{\"error\": \"no idea found matching '\(search)'\"}"
+        }
+
+        let notesText = String(idea.attributedNotes.characters)
+        if notesText.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
+            return "{\"idea\": \"\(idea.text)\", \"notes\": \"(empty)\"}"
+        }
+        return "{\"idea\": \"\(idea.text)\", \"notes\": \"\(notesText.replacingOccurrences(of: "\"", with: "\\\"").replacingOccurrences(of: "\n", with: "\\n"))\"}"
     }
 
     // MARK: - Date Helpers

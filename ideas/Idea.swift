@@ -25,6 +25,12 @@ class Idea {
     var dueTime: String? = nil          // "HH:mm" or nil for all-day
     var recurringPattern: String? = nil  // "daily"|"weekly"|"monthly"|"weekdays"|"yearly"
 
+    // Rich text notes (encoded AttributedString)
+    var notesData: Data = Data()
+
+    // Persisted AI chat messages (encoded [IdeaChatMessage])
+    var chatData: Data = Data()
+
     // Position on graph canvas
     var positionX: Double
     var positionY: Double
@@ -43,6 +49,8 @@ class Idea {
         self.isDone = false
         self.updates = []
         self.subtasks = []
+        self.notesData = Data()
+        self.chatData = Data()
         self.priority = 0
         self.dueDate = nil
         self.dueTime = nil
@@ -53,11 +61,28 @@ class Idea {
         self.linkedFrom = []
     }
 
+    static let demoTag = "_demo"
+
+    var visibleTags: [String] { tags.filter { $0 != Self.demoTag } }
+    var isDemo: Bool { tags.contains(Self.demoTag) }
+
     var allLinks: [Idea] {
         Array(Set(linkedTo + linkedFrom))
     }
 
     // MARK: - Updates
+
+    private static let iso8601Formatter = ISO8601DateFormatter()
+    private static let dueDateShortFormatter: DateFormatter = {
+        let fmt = DateFormatter()
+        fmt.dateFormat = "MMM d"
+        return fmt
+    }()
+    private static let dueDateLongFormatter: DateFormatter = {
+        let fmt = DateFormatter()
+        fmt.dateFormat = "MMM d, yyyy"
+        return fmt
+    }()
 
     struct Update {
         let date: Date
@@ -68,13 +93,13 @@ class Idea {
         updates.compactMap { entry in
             let parts = entry.components(separatedBy: "|||")
             guard parts.count == 2,
-                  let date = ISO8601DateFormatter().date(from: parts[0]) else { return nil }
+                  let date = Self.iso8601Formatter.date(from: parts[0]) else { return nil }
             return Update(date: date, text: parts[1])
         }
     }
 
     func addUpdate(_ text: String) {
-        let timestamp = ISO8601DateFormatter().string(from: Date())
+        let timestamp = Self.iso8601Formatter.string(from: Date())
         updates.append("\(timestamp)|||\(text)")
     }
 
@@ -229,8 +254,7 @@ class Idea {
         } else if cal.isDateInYesterday(dueDate) {
             dateStr = "yesterday"
         } else {
-            let fmt = DateFormatter()
-            fmt.dateFormat = cal.isDate(dueDate, equalTo: Date(), toGranularity: .year) ? "MMM d" : "MMM d, yyyy"
+            let fmt = cal.isDate(dueDate, equalTo: Date(), toGranularity: .year) ? Self.dueDateShortFormatter : Self.dueDateLongFormatter
             dateStr = fmt.string(from: dueDate)
         }
 
@@ -259,6 +283,21 @@ class Idea {
             return next
         case .yearly:
             return cal.date(byAdding: .year, value: 1, to: dueDate)
+        }
+    }
+}
+
+extension Idea {
+    /// Animated checkbox toggle with recurring-aware date advancement.
+    func animatedToggleDone() {
+        if recurring != nil && !isDone {
+            withAnimation(.easeOut(duration: 0.15)) { isDone = true }
+            if let next = nextDueDate() { dueDate = next }
+            DispatchQueue.main.asyncAfter(deadline: .now() + 0.4) {
+                withAnimation(.easeOut(duration: 0.15)) { self.isDone = false }
+            }
+        } else {
+            withAnimation(.easeOut(duration: 0.15)) { isDone.toggle() }
         }
     }
 }
