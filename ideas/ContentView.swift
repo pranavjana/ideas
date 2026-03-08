@@ -30,13 +30,14 @@ extension EnvironmentValues {
 }
 
 enum Page: String, CaseIterable {
-    case ideas, graph, chat, settings
+    case ideas, graph, chat, focus, settings
 
     var label: String {
         switch self {
         case .ideas: "ideas"
         case .graph: "graph"
         case .chat: "ai chat"
+        case .focus: "focus"
         case .settings: "settings"
         }
     }
@@ -46,6 +47,7 @@ enum Page: String, CaseIterable {
         case .ideas: "square.and.pencil"
         case .graph: "circle.grid.cross"
         case .chat: "bubble.left"
+        case .focus: "scope"
         case .settings: "gearshape"
         }
     }
@@ -216,7 +218,7 @@ struct ContentView: View {
         #else
         NavigationSplitView {
             List(selection: $selectedPage) {
-                ForEach([Page.ideas, .graph, .chat], id: \.self) { page in
+                ForEach([Page.ideas, .graph, .chat, .focus], id: \.self) { page in
                     NavigationLink(value: page) {
                         Label(page.label, systemImage: page.icon)
                     }
@@ -281,7 +283,7 @@ struct ContentView: View {
 
             // Navigation
             VStack(spacing: 2) {
-                ForEach([Page.ideas, .graph, .chat], id: \.self) { page in
+                ForEach([Page.ideas, .graph, .chat, .focus], id: \.self) { page in
                     navItem(page: page)
                 }
             }
@@ -349,6 +351,8 @@ struct ContentView: View {
             GraphView()
         case .chat:
             ChatView(ideasViewModel: viewModel)
+        case .focus:
+            FocusView(ideasViewModel: viewModel)
         case .settings:
             SettingsView()
         }
