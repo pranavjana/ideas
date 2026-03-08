@@ -290,7 +290,7 @@ struct ContentView: View {
             .padding(.horizontal, 10)
 
             // Folder browser
-            if currentPage == .ideas {
+            if currentPage == .ideas || currentPage == .focus {
                 Rectangle()
                     .fill(Color.white.opacity(0.06))
                     .frame(height: 1)

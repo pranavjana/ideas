@@ -37,13 +37,59 @@ class FocusViewModel {
         }
     }
 
+    private static let focusDateKey = "focus_date"
+    private static let focusIdeaIDsKey = "focus_idea_ids"
+
     init(modelContext: ModelContext) {
         self.modelContext = modelContext
         loadUserName()
+        restoreFocus()
     }
 
     func setIdeasViewModel(_ vm: IdeasViewModel?) {
         self.ideasViewModel = vm
+    }
+
+    // MARK: - Persistence
+
+    private func saveFocus() {
+        let today = Calendar.current.startOfDay(for: Date())
+        UserDefaults.standard.set(today, forKey: Self.focusDateKey)
+        let uriStrings = focusItems.map { $0.idea.persistentModelID.storeIdentifier }
+        UserDefaults.standard.set(uriStrings, forKey: Self.focusIdeaIDsKey)
+    }
+
+    private func restoreFocus() {
+        guard let savedDate = UserDefaults.standard.object(forKey: Self.focusDateKey) as? Date else { return }
+        let today = Calendar.current.startOfDay(for: Date())
+        guard Calendar.current.isDate(savedDate, inSameDayAs: today) else {
+            // Stale focus from a different day — clear it
+            clearSavedFocus()
+            return
+        }
+
+        guard let uriStrings = UserDefaults.standard.stringArray(forKey: Self.focusIdeaIDsKey),
+              !uriStrings.isEmpty else { return }
+
+        let descriptor = FetchDescriptor<Idea>()
+        guard let allIdeas = try? modelContext.fetch(descriptor) else { return }
+
+        var restored: [Idea] = []
+        for uri in uriStrings {
+            if let idea = allIdeas.first(where: { $0.persistentModelID.storeIdentifier == uri }) {
+                restored.append(idea)
+            }
+        }
+
+        if !restored.isEmpty {
+            focusItems = restored.map { FocusItem(idea: $0) }
+            phase = .confirmed
+        }
+    }
+
+    private func clearSavedFocus() {
+        UserDefaults.standard.removeObject(forKey: Self.focusDateKey)
+        UserDefaults.standard.removeObject(forKey: Self.focusIdeaIDsKey)
     }
 
     private func loadUserName() {
@@ -96,6 +142,7 @@ class FocusViewModel {
         withAnimation(.easeInOut(duration: 0.3)) {
             phase = .confirmed
         }
+        saveFocus()
     }
 
     func resetFocus() {
@@ -104,6 +151,7 @@ class FocusViewModel {
             focusItems = []
             messages = []
         }
+        clearSavedFocus()
     }
 
     func toggleItem(_ item: FocusItem) {
