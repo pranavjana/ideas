@@ -284,8 +284,7 @@ class ChatViewModel {
         for msg in messages {
             switch msg.role {
             case .user:
-                if let imageData = msg.imageData {
-                    let base64 = imageData.base64EncodedString()
+                if let base64 = msg.imageBase64 {
                     var m = OpenAIService.Message(role: "user", content: msg.content)
                     m.imageBase64 = base64
                     apiMessages.append(m)

@@ -328,15 +328,8 @@ struct IdeaTools {
             return "{\"error\": \"missing 'search' parameter\"}"
         }
 
-        let descriptor = FetchDescriptor<Idea>()
-        guard let allIdeas = try? modelContext.fetch(descriptor) else {
-            return "{\"error\": \"could not fetch ideas\"}"
-        }
-
-        let lowercaseSearch = search.lowercased()
-        guard let idea = allIdeas.first(where: { $0.text.lowercased().contains(lowercaseSearch) }) else {
-            return "{\"error\": \"no idea found matching '\(search)'\"}"
-        }
+        let result = findIdea(matching: search, in: modelContext)
+        guard let idea = result.idea else { return result.error! }
 
         var changes: [String] = []
 
@@ -385,8 +378,9 @@ struct IdeaTools {
 
         try? modelContext.save()
 
-        // Refresh connections if text or tags changed
-        if !changes.isEmpty, let vm = ideasViewModel {
+        // Refresh connections only if semantic content changed
+        let contentFields: Set<String> = ["text", "tags", "category"]
+        if !changes.isEmpty && !contentFields.isDisjoint(with: changes), let vm = ideasViewModel {
             await vm.refreshConnections(for: idea)
         }
 
@@ -404,15 +398,8 @@ struct IdeaTools {
             return "{\"error\": \"missing 'query' parameter\"}"
         }
 
-        let descriptor = FetchDescriptor<Idea>()
-        guard let allIdeas = try? modelContext.fetch(descriptor) else {
-            return "{\"error\": \"could not fetch ideas\"}"
-        }
-
-        let lowercaseQuery = query.lowercased()
-        guard let idea = allIdeas.first(where: { $0.text.lowercased().contains(lowercaseQuery) }) else {
-            return "{\"error\": \"no idea found matching '\(query)'\"}"
-        }
+        let result = findIdea(matching: query, in: modelContext)
+        guard let idea = result.idea else { return result.error! }
 
         let deletedText = idea.text
         modelContext.delete(idea)
@@ -432,15 +419,8 @@ struct IdeaTools {
             return "{\"error\": \"missing 'update' parameter\"}"
         }
 
-        let descriptor = FetchDescriptor<Idea>()
-        guard let allIdeas = try? modelContext.fetch(descriptor) else {
-            return "{\"error\": \"could not fetch ideas\"}"
-        }
-
-        let lowercaseSearch = search.lowercased()
-        guard let idea = allIdeas.first(where: { $0.text.lowercased().contains(lowercaseSearch) }) else {
-            return "{\"error\": \"no idea found matching '\(search)'\"}"
-        }
+        let result = findIdea(matching: search, in: modelContext)
+        guard let idea = result.idea else { return result.error! }
 
         idea.addUpdate(update)
         try? modelContext.save()
@@ -459,15 +439,8 @@ struct IdeaTools {
             return "{\"error\": \"missing 'subtasks' parameter\"}"
         }
 
-        let descriptor = FetchDescriptor<Idea>()
-        guard let allIdeas = try? modelContext.fetch(descriptor) else {
-            return "{\"error\": \"could not fetch ideas\"}"
-        }
-
-        let lowercaseSearch = search.lowercased()
-        guard let idea = allIdeas.first(where: { $0.text.lowercased().contains(lowercaseSearch) }) else {
-            return "{\"error\": \"no idea found matching '\(search)'\"}"
-        }
+        let result = findIdea(matching: search, in: modelContext)
+        guard let idea = result.idea else { return result.error! }
 
         for subtask in subtasks {
             idea.addSubtask(subtask)
@@ -486,15 +459,8 @@ struct IdeaTools {
             return "{\"error\": \"missing 'subtask' parameter\"}"
         }
 
-        let descriptor = FetchDescriptor<Idea>()
-        guard let allIdeas = try? modelContext.fetch(descriptor) else {
-            return "{\"error\": \"could not fetch ideas\"}"
-        }
-
-        let lowercaseSearch = search.lowercased()
-        guard let idea = allIdeas.first(where: { $0.text.lowercased().contains(lowercaseSearch) }) else {
-            return "{\"error\": \"no idea found matching '\(search)'\"}"
-        }
+        let result = findIdea(matching: search, in: modelContext)
+        guard let idea = result.idea else { return result.error! }
 
         let lowercaseSubtask = subtaskQuery.lowercased()
         guard let index = idea.subtasks.firstIndex(where: { $0.lowercased().contains(lowercaseSubtask) }) else {
@@ -517,15 +483,8 @@ struct IdeaTools {
             return "{\"error\": \"missing 'subtask' parameter\"}"
         }
 
-        let descriptor = FetchDescriptor<Idea>()
-        guard let allIdeas = try? modelContext.fetch(descriptor) else {
-            return "{\"error\": \"could not fetch ideas\"}"
-        }
-
-        let lowercaseSearch = search.lowercased()
-        guard let idea = allIdeas.first(where: { $0.text.lowercased().contains(lowercaseSearch) }) else {
-            return "{\"error\": \"no idea found matching '\(search)'\"}"
-        }
+        let result = findIdea(matching: search, in: modelContext)
+        guard let idea = result.idea else { return result.error! }
 
         let lowercaseSubtask = subtaskQuery.lowercased()
         guard let index = idea.subtasks.firstIndex(where: { $0.lowercased().contains(lowercaseSubtask) }) else {
@@ -550,15 +509,8 @@ struct IdeaTools {
             return "{\"error\": \"missing 'content' parameter\"}"
         }
 
-        let descriptor = FetchDescriptor<Idea>()
-        guard let allIdeas = try? modelContext.fetch(descriptor) else {
-            return "{\"error\": \"could not fetch ideas\"}"
-        }
-
-        let lowercaseSearch = search.lowercased()
-        guard let idea = allIdeas.first(where: { $0.text.lowercased().contains(lowercaseSearch) }) else {
-            return "{\"error\": \"no idea found matching '\(search)'\"}"
-        }
+        let result = findIdea(matching: search, in: modelContext)
+        guard let idea = result.idea else { return result.error! }
 
         idea.attributedNotes = AttributedString(content)
         try? modelContext.save()
@@ -572,15 +524,8 @@ struct IdeaTools {
             return "{\"error\": \"missing 'search' parameter\"}"
         }
 
-        let descriptor = FetchDescriptor<Idea>()
-        guard let allIdeas = try? modelContext.fetch(descriptor) else {
-            return "{\"error\": \"could not fetch ideas\"}"
-        }
-
-        let lowercaseSearch = search.lowercased()
-        guard let idea = allIdeas.first(where: { $0.text.lowercased().contains(lowercaseSearch) }) else {
-            return "{\"error\": \"no idea found matching '\(search)'\"}"
-        }
+        let result = findIdea(matching: search, in: modelContext)
+        guard let idea = result.idea else { return result.error! }
 
         let notesText = String(idea.attributedNotes.characters)
         if notesText.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
@@ -589,13 +534,32 @@ struct IdeaTools {
         return "{\"idea\": \"\(idea.text)\", \"notes\": \"\(notesText.replacingOccurrences(of: "\"", with: "\\\"").replacingOccurrences(of: "\n", with: "\\n"))\"}"
     }
 
+    // MARK: - Shared Helpers
+
+    @MainActor
+    private static func findIdea(matching search: String, in modelContext: ModelContext) -> (idea: Idea?, error: String?) {
+        let descriptor = FetchDescriptor<Idea>()
+        guard let allIdeas = try? modelContext.fetch(descriptor) else {
+            return (nil, "{\"error\": \"could not fetch ideas\"}")
+        }
+        let lowercased = search.lowercased()
+        guard let idea = allIdeas.first(where: { $0.text.lowercased().contains(lowercased) }) else {
+            return (nil, "{\"error\": \"no idea found matching '\(search)'\"}")
+        }
+        return (idea, nil)
+    }
+
     // MARK: - Date Helpers
 
-    private static func parseDateString(_ str: String) -> Date? {
+    private static let dateFormatter: DateFormatter = {
         let fmt = DateFormatter()
         fmt.dateFormat = "yyyy-MM-dd"
         fmt.locale = Locale(identifier: "en_US_POSIX")
-        guard let date = fmt.date(from: str) else { return nil }
+        return fmt
+    }()
+
+    static func parseDateString(_ str: String) -> Date? {
+        guard let date = dateFormatter.date(from: str) else { return nil }
         return Calendar.current.startOfDay(for: date)
     }
 

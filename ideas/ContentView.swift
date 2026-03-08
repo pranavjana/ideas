@@ -958,9 +958,7 @@ struct ContentView: View {
     }
 
     private func boardCardAccent(for idea: Idea) -> Color? {
-        guard let firstTag = idea.tags.first,
-              let hex = profiles.first?.tagColors[firstTag], !hex.isEmpty else { return nil }
-        return Color(hex: hex)
+        idea.accentColor(from: profiles.first?.tagColors ?? [:])
     }
 
     private func boardCard(idea: Idea) -> some View {
@@ -1059,9 +1057,7 @@ struct IdeaRow: View {
 
     /// Resolved color from the first tag, or nil if no color is set.
     private var rowAccent: Color? {
-        guard let firstTag = idea.tags.first,
-              let hex = tagColors[firstTag], !hex.isEmpty else { return nil }
-        return Color(hex: hex)
+        idea.accentColor(from: tagColors)
     }
 
     var body: some View {

@@ -6,9 +6,7 @@ struct NodeView: View {
     let isSelected: Bool
 
     private var nodeAccent: Color? {
-        guard let firstTag = idea.tags.first,
-              let hex = tagColors[firstTag], !hex.isEmpty else { return nil }
-        return Color(hex: hex)
+        idea.accentColor(from: tagColors)
     }
 
     var body: some View {

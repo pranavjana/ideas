@@ -37,12 +37,7 @@ struct IdeaEditorPanel: View {
     @FocusState private var isEditorFocused: Bool
 
     private var accent: Color {
-        if let firstTag = idea.tags.first,
-           let hex = tagColors[firstTag], !hex.isEmpty,
-           let c = Color(hex: hex) {
-            return c
-        }
-        return .white
+        idea.accentColor(from: tagColors) ?? .white
     }
 
     var body: some View {

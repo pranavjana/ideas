@@ -9,6 +9,7 @@ struct ChatMessage: Identifiable {
     var toolName: String?
     var toolCalls: [ToolCall]?
     var imageData: Data?
+    var imageBase64: String?
 
     enum Role {
         case user
@@ -88,6 +89,7 @@ struct ChatMessage: Identifiable {
         self.content = content
         self.timestamp = Date()
         self.imageData = imageData
+        self.imageBase64 = imageData?.base64EncodedString()
     }
 
     init(toolResult: String, toolCallId: String, toolName: String) {

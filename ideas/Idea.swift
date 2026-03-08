@@ -66,6 +66,12 @@ class Idea {
     var visibleTags: [String] { tags.filter { $0 != Self.demoTag } }
     var isDemo: Bool { tags.contains(Self.demoTag) }
 
+    func accentColor(from tagColors: [String: String]) -> Color? {
+        guard let firstTag = tags.first,
+              let hex = tagColors[firstTag], !hex.isEmpty else { return nil }
+        return Color(hex: hex)
+    }
+
     var allLinks: [Idea] {
         Array(Set(linkedTo + linkedFrom))
     }
