@@ -35,6 +35,9 @@ class Idea {
     var positionX: Double
     var positionY: Double
 
+    // Folder organization
+    var folder: Folder?
+
     // Graph relationships for mindmap
     @Relationship(inverse: \Idea.linkedFrom)
     var linkedTo: [Idea]
@@ -55,6 +58,7 @@ class Idea {
         self.dueDate = nil
         self.dueTime = nil
         self.recurringPattern = nil
+        self.folder = nil
         self.positionX = 0
         self.positionY = 0
         self.linkedTo = []

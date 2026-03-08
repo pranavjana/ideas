@@ -293,7 +293,7 @@ struct IdeaEditorPanel: View {
                 }
             }
 
-            propertyRow(icon: "folder", label: "Category") {
+            propertyRow(icon: "square.grid.2x2", label: "Category") {
                 if !idea.category.isEmpty {
                     Text(idea.category)
                         .font(.custom("Switzer-Regular", size: 13))
@@ -304,6 +304,8 @@ struct IdeaEditorPanel: View {
                         .foregroundStyle(Color.white.opacity(0.2))
                 }
             }
+
+            FolderPropertyRow(idea: idea)
 
             propertyRow(icon: "tag", label: "Tags") {
                 let visibleTags = idea.visibleTags
@@ -812,5 +814,67 @@ struct RichNotesEditor: View {
         showSlashMenu = false
         slashFilter = ""
         selectedMenuIndex = 0
+    }
+}
+
+// MARK: - Folder Property Row
+
+struct FolderPropertyRow: View {
+    @Environment(\.modelContext) private var modelContext
+    @Bindable var idea: Idea
+    @Query private var allFolders: [Folder]
+
+    var body: some View {
+        HStack(alignment: .center, spacing: 0) {
+            HStack(spacing: 6) {
+                Image(systemName: "folder")
+                    .font(.system(size: 11))
+                    .foregroundStyle(Color.white.opacity(0.2))
+                    .frame(width: 16)
+                Text("Folder")
+                    .font(.custom("Switzer-Regular", size: 13))
+                    .foregroundStyle(Color.white.opacity(0.35))
+            }
+            .frame(width: 120, alignment: .leading)
+
+            Menu {
+                Button {
+                    idea.folder = nil
+                    try? modelContext.save()
+                } label: {
+                    Label("None", systemImage: "tray")
+                }
+
+                Divider()
+
+                ForEach(allFolders.sorted(by: { $0.name < $1.name })) { folder in
+                    Button {
+                        idea.folder = folder
+                        try? modelContext.save()
+                    } label: {
+                        Label(folder.breadcrumb, systemImage: folder.icon)
+                    }
+                }
+            } label: {
+                if let folder = idea.folder {
+                    HStack(spacing: 4) {
+                        Image(systemName: folder.icon)
+                            .font(.system(size: 9))
+                        Text(folder.name)
+                            .font(.custom("Switzer-Regular", size: 13))
+                    }
+                    .foregroundStyle((folder.color ?? .white).opacity(0.7))
+                } else {
+                    Text("None")
+                        .font(.custom("Switzer-Regular", size: 13))
+                        .foregroundStyle(Color.white.opacity(0.2))
+                }
+            }
+            .menuStyle(.borderlessButton)
+            .fixedSize()
+
+            Spacer()
+        }
+        .padding(.vertical, 8)
     }
 }

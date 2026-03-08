@@ -333,6 +333,10 @@ class IdeaChatViewModel {
             parts.append("UPDATES:\n\(updateList)")
         }
 
+        if let folder = idea.folder {
+            parts.append("FOLDER: \(folder.breadcrumb)")
+        }
+
         let connections = idea.allLinks.map { $0.text }
         if !connections.isEmpty {
             parts.append("CONNECTED IDEAS: \(connections.joined(separator: ", "))")
@@ -362,7 +366,7 @@ class IdeaChatViewModel {
         - NEVER put questions or "need to clarify" placeholders in the notes. Notes should be CLEAN, finalized content. If you have questions, ask them in the chat and use the answers to write better notes.
         - Write notes in markdown format — use **bold**, *italic*, `code`, headings (## / ###), bullet lists (- item), etc. The notes editor renders markdown formatting.
 
-        TOOLS: You can directly edit notes (write_notes, append_notes), title (edit_title), subtasks (add_subtasks), priority (set_priority), due date (set_due_date), and log updates (add_update). USE THEM PROACTIVELY — don't ask permission to write, just write and show the user what you did.
+        TOOLS: You have 3 CRUD tools — create, update, delete — each with a "type" parameter. Use create(type="note") to write notes, create(type="subtask") to add subtasks, create(type="update") for progress logs. Use update(type="title/note/priority/due_date/folder/subtask/status") to modify things. Use delete(type="subtask/note") to remove things. USE THEM PROACTIVELY — don't ask permission, just do it and show the user what you did.
 
         IMPORTANT — SUGGESTED REPLIES: At the end of EVERY message, include 2-3 short suggested replies the user might want to say next. Format them as lines starting with "> ". These should be natural continuations of the conversation — answers to your question, directions to explore, or requests. Make them specific and useful, not generic. Examples:
         > Yes, it's mainly for mobile users
@@ -380,120 +384,99 @@ class IdeaChatViewModel {
         return (try? modelContext.fetch(descriptor))?.first?.openaiAPIKey
     }
 
-    // MARK: - Tool Definitions
+    // MARK: - Tool Definitions (3 CRUD tools scoped to this idea)
 
     static let toolDefinitions: [[String: Any]] = [
         [
             "type": "function",
             "function": [
-                "name": "write_notes",
-                "description": "Replace the idea's notes with new content. Use markdown formatting. This overwrites existing notes entirely.",
+                "name": "create",
+                "description": """
+                Create something on this idea. Use type to specify:
+                - "note": Write/replace the idea's notes (overwrites). Params: content (markdown)
+                - "subtask": Add subtasks. Params: subtasks (array of texts)
+                - "update": Add a timestamped progress note. Params: text
+                """,
                 "parameters": [
                     "type": "object",
                     "properties": [
-                        "content": ["type": "string", "description": "The new notes content (plain text, supports markdown)"]
-                    ],
-                    "required": ["content"]
-                ] as [String: Any]
-            ] as [String: Any]
-        ],
-        [
-            "type": "function",
-            "function": [
-                "name": "append_notes",
-                "description": "Append text to the end of the existing notes. Adds a newline separator before the new content.",
-                "parameters": [
-                    "type": "object",
-                    "properties": [
-                        "content": ["type": "string", "description": "Text to append to notes"]
-                    ],
-                    "required": ["content"]
-                ] as [String: Any]
-            ] as [String: Any]
-        ],
-        [
-            "type": "function",
-            "function": [
-                "name": "edit_title",
-                "description": "Update the idea's title.",
-                "parameters": [
-                    "type": "object",
-                    "properties": [
-                        "title": ["type": "string", "description": "New title for the idea"]
-                    ],
-                    "required": ["title"]
-                ] as [String: Any]
-            ] as [String: Any]
-        ],
-        [
-            "type": "function",
-            "function": [
-                "name": "add_subtasks",
-                "description": "Add one or more subtasks to the idea.",
-                "parameters": [
-                    "type": "object",
-                    "properties": [
-                        "subtasks": ["type": "array", "items": ["type": "string"], "description": "Subtask texts to add"]
-                    ],
-                    "required": ["subtasks"]
-                ] as [String: Any]
-            ] as [String: Any]
-        ],
-        [
-            "type": "function",
-            "function": [
-                "name": "toggle_subtask",
-                "description": "Toggle a subtask's done/todo status by partial text match.",
-                "parameters": [
-                    "type": "object",
-                    "properties": [
-                        "subtask": ["type": "string", "description": "Partial text of the subtask to toggle"]
-                    ],
-                    "required": ["subtask"]
-                ] as [String: Any]
-            ] as [String: Any]
-        ],
-        [
-            "type": "function",
-            "function": [
-                "name": "set_priority",
-                "description": "Set the idea's priority level.",
-                "parameters": [
-                    "type": "object",
-                    "properties": [
-                        "priority": ["type": "string", "enum": ["urgent", "high", "medium", "low", "none"], "description": "Priority level"]
-                    ],
-                    "required": ["priority"]
-                ] as [String: Any]
-            ] as [String: Any]
-        ],
-        [
-            "type": "function",
-            "function": [
-                "name": "set_due_date",
-                "description": "Set or clear the idea's due date and optionally time and recurring pattern.",
-                "parameters": [
-                    "type": "object",
-                    "properties": [
-                        "date": ["type": "string", "description": "Due date YYYY-MM-DD, or 'none' to clear"],
-                        "time": ["type": "string", "description": "Due time HH:mm, or 'none' to clear"],
-                        "recurring": ["type": "string", "enum": ["daily", "weekly", "monthly", "weekdays", "yearly", "none"], "description": "Recurring pattern"]
+                        "type": ["type": "string", "enum": ["note", "subtask", "update"], "description": "What to create"],
+                        "content": ["type": "string", "description": "Markdown content (note)"],
+                        "subtasks": ["type": "array", "items": ["type": "string"], "description": "Subtask texts (subtask)"],
+                        "text": ["type": "string", "description": "Update text (update)"]
                     ] as [String: Any],
-                    "required": ["date"]
+                    "required": ["type"]
                 ] as [String: Any]
             ] as [String: Any]
         ],
         [
             "type": "function",
             "function": [
-                "name": "add_update",
-                "description": "Add a timestamped progress update to the idea's update log.",
+                "name": "update",
+                "description": """
+                Update this idea's properties. Use type to specify:
+                - "title": Change the title. Params: title
+                - "note": Append to existing notes. Params: content
+                - "priority": Set priority. Params: priority (urgent/high/medium/low/none)
+                - "due_date": Set due date. Params: date (YYYY-MM-DD or 'none'), time (HH:mm or 'none'), recurring (daily/weekly/monthly/weekdays/yearly/none)
+                - "folder": Move to folder. Params: folder (name or 'none')
+                - "subtask": Toggle a subtask done/todo. Params: subtask (text match)
+                - "status": Mark done/undone. Params: done (true/false)
+                """,
                 "parameters": [
                     "type": "object",
                     "properties": [
-                        "update": ["type": "string", "description": "Update text"]
-                    ],
-                    "required": ["update"]
+                        "type": ["type": "string", "enum": ["title", "note", "priority", "due_date", "folder", "subtask", "status"], "description": "What to update"],
+                        "title": ["type": "string", "description": "New title (title)"],
+                        "content": ["type": "string", "description": "Text to append (note)"],
+                        "priority": ["type": "string", "enum": ["urgent", "high", "medium", "low", "none"], "description": "Priority level (priority)"],
+                        "date": ["type": "string", "description": "Due date YYYY-MM-DD or 'none' (due_date)"],
+                        "time": ["type": "string", "description": "Due time HH:mm or 'none' (due_date)"],
+                        "recurring": ["type": "string", "enum": ["daily", "weekly", "monthly", "weekdays", "yearly", "none"], "description": "Recurring pattern (due_date)"],
+                        "folder": ["type": "string", "description": "Folder name or full path like 'School / Projects', or 'none' (folder)"],
+                        "subtask": ["type": "string", "description": "Subtask text to toggle (subtask)"],
+                        "done": ["type": "boolean", "description": "Mark done/undone (status)"]
+                    ] as [String: Any],
+                    "required": ["type"]
+                ] as [String: Any]
+            ] as [String: Any]
+        ],
+        [
+            "type": "function",
+            "function": [
+                "name": "read",
+                "description": """
+                Read data. Use type to specify:
+                - "ideas": Search all ideas by keyword. Params: query, folder (optional filter)
+                - "folders": List all folders and hierarchy.
+                """,
+                "parameters": [
+                    "type": "object",
+                    "properties": [
+                        "type": ["type": "string", "enum": ["ideas", "folders"], "description": "What to read"],
+                        "query": ["type": "string", "description": "Search keyword (ideas)"],
+                        "folder": ["type": "string", "description": "Folder to search within (ideas)"]
+                    ] as [String: Any],
+                    "required": ["type"]
+                ] as [String: Any]
+            ] as [String: Any]
+        ],
+        [
+            "type": "function",
+            "function": [
+                "name": "delete",
+                "description": """
+                Delete something from this idea. Use type to specify:
+                - "subtask": Remove a subtask. Params: subtask (text match)
+                - "note": Clear all notes.
+                """,
+                "parameters": [
+                    "type": "object",
+                    "properties": [
+                        "type": ["type": "string", "enum": ["subtask", "note"], "description": "What to delete"],
+                        "subtask": ["type": "string", "description": "Subtask text to remove (subtask)"]
+                    ] as [String: Any],
+                    "required": ["type"]
                 ] as [String: Any]
             ] as [String: Any]
         ]
@@ -506,83 +489,184 @@ class IdeaChatViewModel {
               let args = try? JSONSerialization.jsonObject(with: data) as? [String: Any]
         else { return "{\"error\": \"invalid arguments\"}" }
 
-        switch name {
-        case "write_notes":
-            guard let content = args["content"] as? String else {
-                return "{\"error\": \"missing content\"}"
-            }
-            idea.attributedNotes = AttributedString(content)
-            onNotesChanged?()
-            return "{\"success\": true, \"message\": \"Notes updated (\(content.count) chars)\"}"
+        guard let type = args["type"] as? String else {
+            return executeLegacyIdeaTool(name: name, args: args)
+        }
 
-        case "append_notes":
-            guard let content = args["content"] as? String else {
-                return "{\"error\": \"missing content\"}"
-            }
+        switch name {
+        case "create":
+            return executeIdeaCreate(type: type, args: args)
+        case "read":
+            return executeIdeaRead(type: type, args: args)
+        case "update":
+            return executeIdeaUpdate(type: type, args: args)
+        case "delete":
+            return executeIdeaDelete(type: type, args: args)
+        default:
+            return executeLegacyIdeaTool(name: name, args: args)
+        }
+    }
+
+    // MARK: - Create (idea-scoped)
+
+    private func executeIdeaCreate(type: String, args: [String: Any]) -> String {
+        switch type {
+        case "note":
+            guard let content = args["content"] as? String else { return "{\"error\": \"missing content\"}" }
+            idea.attributedNotes = AttributedString(content)
+            try? modelContext.save()
+            onNotesChanged?()
+            return "{\"success\": true, \"message\": \"Notes written (\(content.count) chars)\"}"
+        case "subtask":
+            guard let subtasks = args["subtasks"] as? [String] else { return "{\"error\": \"missing subtasks\"}" }
+            for s in subtasks { idea.addSubtask(s) }
+            try? modelContext.save()
+            return "{\"success\": true, \"message\": \"Added \(subtasks.count) subtask(s)\"}"
+        case "update":
+            guard let text = args["text"] as? String else { return "{\"error\": \"missing text\"}" }
+            idea.addUpdate(text)
+            try? modelContext.save()
+            return "{\"success\": true, \"message\": \"Update added\"}"
+        default:
+            return "{\"error\": \"unknown create type: \(type). Use: note, subtask, update\"}"
+        }
+    }
+
+    // MARK: - Read (idea-scoped, delegates to IdeaTools)
+
+    private func executeIdeaRead(type: String, args: [String: Any]) -> String {
+        switch type {
+        case "ideas":
+            return IdeaTools.readIdeas(args: args, modelContext: modelContext)
+        case "folders":
+            return IdeaTools.readFolders(modelContext: modelContext)
+        default:
+            return "{\"error\": \"unknown read type: \(type). Use: ideas, folders\"}"
+        }
+    }
+
+    // MARK: - Update (idea-scoped)
+
+    private func executeIdeaUpdate(type: String, args: [String: Any]) -> String {
+        switch type {
+        case "title":
+            guard let title = args["title"] as? String else { return "{\"error\": \"missing title\"}" }
+            idea.text = title
+            try? modelContext.save()
+            return "{\"success\": true, \"message\": \"Title updated to: \(title)\"}"
+
+        case "note":
+            guard let content = args["content"] as? String else { return "{\"error\": \"missing content\"}" }
             var current = idea.attributedNotes
             current.append(AttributedString("\n\n" + content))
             idea.attributedNotes = current
+            try? modelContext.save()
             onNotesChanged?()
             return "{\"success\": true, \"message\": \"Appended to notes\"}"
 
-        case "edit_title":
-            guard let title = args["title"] as? String else {
-                return "{\"error\": \"missing title\"}"
+        case "priority":
+            guard let p = args["priority"] as? String, let priority = Idea.Priority(fromString: p) else {
+                return "{\"error\": \"invalid priority\"}"
             }
-            idea.text = title
-            return "{\"success\": true, \"message\": \"Title updated to: \(title)\"}"
+            idea.priorityLevel = priority
+            try? modelContext.save()
+            return "{\"success\": true, \"message\": \"Priority set to \(priority.label)\"}"
 
-        case "add_subtasks":
-            guard let subtasks = args["subtasks"] as? [String] else {
-                return "{\"error\": \"missing subtasks\"}"
-            }
-            for s in subtasks { idea.addSubtask(s) }
-            return "{\"success\": true, \"message\": \"Added \(subtasks.count) subtask(s)\"}"
+        case "due_date":
+            guard let dateStr = args["date"] as? String else { return "{\"error\": \"missing date\"}" }
+            idea.dueDate = dateStr.lowercased() == "none" ? nil : IdeaTools.parseDateString(dateStr)
+            if let t = args["time"] as? String { idea.dueTime = t.lowercased() == "none" ? nil : t }
+            if let r = args["recurring"] as? String { idea.recurringPattern = r.lowercased() == "none" ? nil : r }
+            try? modelContext.save()
+            return "{\"success\": true, \"message\": \"Due date updated\"}"
 
-        case "toggle_subtask":
-            guard let query = args["subtask"] as? String else {
-                return "{\"error\": \"missing subtask\"}"
+        case "folder":
+            guard let folderStr = args["folder"] as? String else { return "{\"error\": \"missing folder\"}" }
+            if folderStr.lowercased() == "none" {
+                idea.folder = nil
+                try? modelContext.save()
+                return "{\"success\": true, \"message\": \"Removed from folder\"}"
             }
+            guard let folder = IdeaTools.findFolder(matching: folderStr, in: modelContext) else {
+                let available = (try? modelContext.fetch(FetchDescriptor<Folder>()))?.map { $0.breadcrumb } ?? []
+                return IdeaTools.jsonResult(["error": "folder '\(folderStr)' not found", "availableFolders": available])
+            }
+            idea.folder = folder
+            try? modelContext.save()
+            return "{\"success\": true, \"message\": \"Moved to folder: \(folder.breadcrumb)\"}"
+
+        case "subtask":
+            guard let query = args["subtask"] as? String else { return "{\"error\": \"missing subtask\"}" }
+            let lc2 = query.lowercased()
+            guard let idx = idea.subtasks.firstIndex(where: { $0.lowercased().contains(lc2) }) else {
+                return "{\"error\": \"subtask not found matching '\(query)'\"}"
+            }
+            idea.toggleSubtask(at: idx)
+            try? modelContext.save()
+            let parsed = idea.parsedSubtasks[idx]
+            return "{\"success\": true, \"message\": \"Toggled '\(parsed.text)' to \(parsed.isDone ? "done" : "todo")\"}"
+
+        case "status":
+            guard let done = args["done"] as? Bool else { return "{\"error\": \"missing done\"}" }
+            idea.isDone = done
+            try? modelContext.save()
+            return "{\"success\": true, \"message\": \"Marked \(done ? "done" : "active")\"}"
+
+        default:
+            return "{\"error\": \"unknown update type: \(type). Use: title, note, priority, due_date, folder, subtask, status\"}"
+        }
+    }
+
+    // MARK: - Delete (idea-scoped)
+
+    private func executeIdeaDelete(type: String, args: [String: Any]) -> String {
+        switch type {
+        case "subtask":
+            guard let query = args["subtask"] as? String else { return "{\"error\": \"missing subtask\"}" }
             let lc = query.lowercased()
             guard let idx = idea.subtasks.firstIndex(where: { $0.lowercased().contains(lc) }) else {
                 return "{\"error\": \"subtask not found matching '\(query)'\"}"
             }
-            idea.toggleSubtask(at: idx)
-            let parsed = idea.parsedSubtasks[idx]
-            return "{\"success\": true, \"message\": \"Toggled '\(parsed.text)' to \(parsed.isDone ? "done" : "todo")\"}"
+            let text = idea.parsedSubtasks[idx].text
+            idea.removeSubtask(at: idx)
+            try? modelContext.save()
+            return "{\"success\": true, \"message\": \"Removed subtask '\(text)'\"}"
+        case "note":
+            idea.attributedNotes = AttributedString("")
+            try? modelContext.save()
+            onNotesChanged?()
+            return "{\"success\": true, \"message\": \"Notes cleared\"}"
+        default:
+            return "{\"error\": \"unknown delete type: \(type). Use: subtask, note\"}"
+        }
+    }
 
+    // MARK: - Legacy Tool Compat
+
+    private func executeLegacyIdeaTool(name: String, args: [String: Any]) -> String {
+        switch name {
+        case "write_notes":
+            return executeIdeaCreate(type: "note", args: args)
+        case "append_notes":
+            return executeIdeaUpdate(type: "note", args: args)
+        case "edit_title":
+            var remapped = args
+            remapped["title"] = args["title"]
+            return executeIdeaUpdate(type: "title", args: remapped)
+        case "add_subtasks":
+            return executeIdeaCreate(type: "subtask", args: args)
+        case "toggle_subtask":
+            return executeIdeaUpdate(type: "subtask", args: args)
         case "set_priority":
-            guard let p = args["priority"] as? String,
-                  let priority = Idea.Priority(fromString: p) else {
-                return "{\"error\": \"invalid priority\"}"
-            }
-            idea.priorityLevel = priority
-            return "{\"success\": true, \"message\": \"Priority set to \(priority.label)\"}"
-
+            return executeIdeaUpdate(type: "priority", args: args)
         case "set_due_date":
-            guard let dateStr = args["date"] as? String else {
-                return "{\"error\": \"missing date\"}"
-            }
-            if dateStr.lowercased() == "none" {
-                idea.dueDate = nil
-            } else {
-                idea.dueDate = IdeaTools.parseDateString(dateStr)
-            }
-            if let timeStr = args["time"] as? String {
-                idea.dueTime = timeStr.lowercased() == "none" ? nil : timeStr
-            }
-            if let recurStr = args["recurring"] as? String {
-                idea.recurringPattern = recurStr.lowercased() == "none" ? nil : recurStr
-            }
-            return "{\"success\": true, \"message\": \"Due date updated\"}"
-
+            return executeIdeaUpdate(type: "due_date", args: args)
         case "add_update":
-            guard let update = args["update"] as? String else {
-                return "{\"error\": \"missing update\"}"
-            }
-            idea.addUpdate(update)
-            return "{\"success\": true, \"message\": \"Update added\"}"
-
+            var remapped = args
+            if let u = args["update"] as? String { remapped["text"] = u }
+            return executeIdeaCreate(type: "update", args: remapped)
+        case "set_folder":
+            return executeIdeaUpdate(type: "folder", args: args)
         default:
             return "{\"error\": \"unknown tool: \(name)\"}"
         }

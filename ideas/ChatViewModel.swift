@@ -380,10 +380,26 @@ class ChatViewModel {
                         s += " [subtasks: \(progress.done)/\(progress.total)]"
                     }
                     if idea.priority > 0 { s += " [priority: \(idea.priorityLevel.label)]" }
+                    if let folder = idea.folder { s += " [folder: \(folder.breadcrumb)]" }
                     return s
                 }.joined(separator: "\n")
                 parts.append("IDEAS (most recent first):\n\(summaries)")
             }
+        }
+
+        // Folder context
+        let folderDescriptor = FetchDescriptor<Folder>()
+        if let allFolders = try? modelContext.fetch(folderDescriptor), !allFolders.isEmpty {
+            let rootFolders = allFolders.filter { $0.parent == nil }.sorted { $0.name < $1.name }
+            func tree(_ folder: Folder, indent: String = "") -> String {
+                var s = "\(indent)- \(folder.name) (\(folder.ideas.count) ideas)"
+                for child in folder.sortedChildren {
+                    s += "\n" + tree(child, indent: indent + "  ")
+                }
+                return s
+            }
+            let folderTree = rootFolders.map { tree($0) }.joined(separator: "\n")
+            parts.append("FOLDERS:\n\(folderTree)")
         }
 
         let now = Date()
@@ -396,16 +412,16 @@ class ChatViewModel {
 
         parts.append("""
         You are a helpful thinking partner embedded in an app called "ideas". \
-        You have FULL knowledge of the user's database shown above — their profile, saved tags, all ideas, tags, categories, and connections. \
-        When the user asks about their data, answer from the context above. Use the search tool for precise queries. \
-        You can create, search, update, delete ideas, and add updates to ideas using your tools. \
-        You can set due dates (YYYY-MM-DD), due times (HH:mm), and recurring patterns (daily/weekly/monthly/weekdays/yearly) on ideas. \
-        Pass "none" to clear a due date, time, or recurring pattern. \
+        You have FULL knowledge of the user's database shown above — their profile, saved tags, all ideas, tags, categories, connections, and folders. \
+        When the user asks about their data, answer from the context above. Use the read tool for precise queries. \
+        You have 4 CRUD tools — create, read, update, delete — each with a "type" parameter to specify what entity to operate on. \
+        create(type="idea") to make ideas, create(type="folder") for folders, create(type="subtask") for subtasks, create(type="update") for progress logs, create(type="note") to write notes. \
+        read(type="ideas") to search, read(type="folders") to list folders, read(type="notes") to read notes. \
+        update(type="idea") to change idea fields (text, tags, priority, dueDate, dueTime, recurring, folder, done), update(type="folder") to rename/restyle, update(type="subtask") to toggle done, update(type="note") to append. \
+        delete(type="idea/folder/subtask") to remove things. \
+        You can set due dates (YYYY-MM-DD), due times (HH:mm), and recurring patterns. Pass "none" to clear optional fields. \
         When the user says things like "by Friday" or "next Tuesday", convert to the correct YYYY-MM-DD date. \
-        Use add_update when the user reports progress or changes on an idea — this adds a timestamped note that appears in the idea's update log. \
-        Use add_subtask to break ideas into actionable steps. Use toggle_subtask to mark subtasks done/undone, and remove_subtask to delete them. \
-        You can set priority levels (urgent/high/medium/low/none) on ideas via update_idea. When the user gives context like "focus on school this week" or "exams coming up", call update_idea for each relevant idea to set appropriate priorities. \
-        You can read and write markdown notes on any idea using read_notes and write_notes. Use these to help users develop detailed notes, outlines, and structured content for their ideas. \
+        Folders can be nested (e.g. School > CS 101 > Projects). When creating ideas, you can optionally place them in a folder. \
         Be concise and thoughtful. Reference specific ideas when relevant.
         """)
 
@@ -414,16 +430,10 @@ class ChatViewModel {
 
     private func toolActivityLabel(for toolName: String) -> String {
         switch toolName {
-        case "create_idea": return "creating idea..."
-        case "search_ideas": return "searching ideas..."
-        case "update_idea": return "updating idea..."
-        case "delete_idea": return "deleting idea..."
-        case "add_update": return "adding update..."
-        case "add_subtask": return "adding subtasks..."
-        case "toggle_subtask": return "toggling subtask..."
-        case "remove_subtask": return "removing subtask..."
-        case "write_notes": return "writing notes..."
-        case "read_notes": return "reading notes..."
+        case "create": return "creating..."
+        case "read": return "searching..."
+        case "update": return "updating..."
+        case "delete": return "deleting..."
         default: return "working..."
         }
     }
