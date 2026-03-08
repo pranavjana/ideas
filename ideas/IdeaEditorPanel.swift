@@ -130,6 +130,9 @@ struct IdeaEditorPanel: View {
                 idea.attributedNotes = newValue
             }
         }
+        .onDisappear {
+            saveTask?.cancel()
+        }
     }
 
     private var divider: some View {
@@ -504,7 +507,7 @@ struct IdeaEditorPanel: View {
                 }
 
                 VStack(alignment: .leading, spacing: 0) {
-                    ForEach(idea.parsedUpdates.reversed(), id: \.text) { update in
+                    ForEach(Array(idea.parsedUpdates.reversed().enumerated()), id: \.offset) { _, update in
                         HStack(alignment: .top, spacing: 10) {
                             Circle()
                                 .fill(accent.opacity(0.25))

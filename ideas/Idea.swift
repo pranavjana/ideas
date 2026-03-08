@@ -241,7 +241,7 @@ class Idea {
             return .overdue
         } else if cal.isDateInToday(dueDate) {
             return .today
-        } else if startOfDue < cal.date(byAdding: .day, value: 3, to: startOfToday)! {
+        } else if let threeDaysOut = cal.date(byAdding: .day, value: 3, to: startOfToday), startOfDue < threeDaysOut {
             return .upcoming
         } else {
             return .future

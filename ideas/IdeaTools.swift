@@ -528,10 +528,15 @@ struct IdeaTools {
         guard let idea = result.idea else { return result.error! }
 
         let notesText = String(idea.attributedNotes.characters)
-        if notesText.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
-            return "{\"idea\": \"\(idea.text)\", \"notes\": \"(empty)\"}"
+        let response: [String: Any] = [
+            "idea": idea.text,
+            "notes": notesText.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty ? "(empty)" : notesText
+        ]
+        if let data = try? JSONSerialization.data(withJSONObject: response),
+           let json = String(data: data, encoding: .utf8) {
+            return json
         }
-        return "{\"idea\": \"\(idea.text)\", \"notes\": \"\(notesText.replacingOccurrences(of: "\"", with: "\\\"").replacingOccurrences(of: "\n", with: "\\n"))\"}"
+        return "{\"idea\": \"unknown\", \"notes\": \"(empty)\"}"
     }
 
     // MARK: - Shared Helpers

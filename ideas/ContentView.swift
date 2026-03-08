@@ -86,6 +86,7 @@ struct ContentView: View {
     @State private var searchText = ""
     @State private var aiInputMode = false
     @State private var isAiProcessing = false
+    @State private var silentClearTask: Task<Void, Never>?
     @State private var selectedIdea: Idea? = nil
     @State private var ideaToDelete: Idea? = nil
     @State private var showDeleteConfirm = false
@@ -565,11 +566,13 @@ struct ContentView: View {
         if aiInputMode {
             let text = inputText
             inputText = ""
+            silentClearTask?.cancel()
             withAnimation(.easeOut(duration: 0.25)) { isAiProcessing = true }
-            Task {
+            silentClearTask = Task {
                 await chatViewModel?.sendSilent(text)
                 withAnimation(.easeOut(duration: 0.2)) { isAiProcessing = false }
                 try? await Task.sleep(for: .seconds(5))
+                guard !Task.isCancelled else { return }
                 withAnimation(.easeOut(duration: 0.4)) {
                     chatViewModel?.silentResponseText = ""
                 }
@@ -1166,7 +1169,7 @@ struct IdeaRow: View {
                 // Expandable updates list
                 if showUpdates && !idea.updates.isEmpty {
                     VStack(alignment: .leading, spacing: 6) {
-                        ForEach(idea.parsedUpdates.reversed(), id: \.text) { update in
+                        ForEach(Array(idea.parsedUpdates.reversed().enumerated()), id: \.offset) { _, update in
                             HStack(alignment: .top, spacing: 8) {
                                 Circle()
                                     .fill((rowAccent ?? .white).opacity(0.2))
