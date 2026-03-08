@@ -21,7 +21,7 @@ struct ideasApp: App {
     }
 
     static let sharedContainer: ModelContainer = {
-        let schema = Schema([Idea.self, UserProfile.self])
+        let schema = Schema([Idea.self, UserProfile.self, Folder.self])
         let config = ModelConfiguration(isStoredInMemoryOnly: false)
         do {
             return try ModelContainer(for: schema, configurations: [config])

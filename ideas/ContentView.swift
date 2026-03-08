@@ -83,6 +83,7 @@ struct ContentView: View {
     @State private var inputText = ""
     @State private var sortOption: IdeaSort = .newest
     @State private var ideasLayout: IdeasLayout = .list
+    @State private var groupBy: GroupByOption = .none
     @State private var searchText = ""
     @State private var aiInputMode = false
     @State private var isAiProcessing = false
@@ -90,17 +91,45 @@ struct ContentView: View {
     @State private var selectedIdea: Idea? = nil
     @State private var ideaToDelete: Idea? = nil
     @State private var showDeleteConfirm = false
+    @State private var showFilterDisplay = false
+    @State private var filterState = FilterState()
+    @State private var selectedFolder: Folder? = nil
     @FocusState private var isInputFocused: Bool
 
     private var filteredIdeas: [Idea] {
         let valid = ideas.filter { $0.modelContext != nil }
-        guard !searchText.isEmpty else { return valid }
-        let query = searchText.lowercased()
-        return valid.filter { idea in
-            idea.text.lowercased().contains(query)
-            || idea.tags.contains(where: { $0.lowercased().contains(query) })
-            || idea.category.lowercased().contains(query)
+        var result = valid
+
+        // Search text filter
+        if !searchText.isEmpty {
+            let query = searchText.lowercased()
+            result = result.filter { idea in
+                idea.text.lowercased().contains(query)
+                || idea.tags.contains(where: { $0.lowercased().contains(query) })
+                || idea.category.lowercased().contains(query)
+            }
         }
+
+        // Folder filter (from sidebar selection)
+        if let folder = selectedFolder {
+            let folderIdeaIDs = Set(folder.allIdeas.map { $0.persistentModelID })
+            result = result.filter { folderIdeaIDs.contains($0.persistentModelID) }
+        }
+
+        // Apply filter state
+        result = result.filter { filterState.matches($0) }
+
+        return result
+    }
+
+    /// All unique tags across ideas, for the filter sheet.
+    private var allTags: [String] {
+        Array(Set(ideas.flatMap { $0.visibleTags })).sorted()
+    }
+
+    /// All unique categories across ideas, for the filter sheet.
+    private var allCategories: [String] {
+        Array(Set(ideas.compactMap { $0.category.isEmpty ? nil : $0.category })).sorted()
     }
 
     private var sortedIdeas: [Idea] {
@@ -258,6 +287,20 @@ struct ContentView: View {
             }
             .padding(.horizontal, 10)
 
+            // Folder browser
+            if currentPage == .ideas {
+                Rectangle()
+                    .fill(Color.white.opacity(0.06))
+                    .frame(height: 1)
+                    .padding(.horizontal, 16)
+                    .padding(.vertical, 8)
+
+                ScrollView {
+                    FolderBrowserView(selectedFolder: $selectedFolder)
+                }
+                .padding(.horizontal, 4)
+            }
+
             Spacer()
 
             // Settings at bottom
@@ -369,48 +412,54 @@ struct ContentView: View {
         .searchable(text: $searchText, placement: .navigationBarDrawer(displayMode: .always), prompt: "search...")
         .toolbar {
             ToolbarItem(placement: .topBarTrailing) {
-                Menu {
-                    Section("layout") {
-                        Button {
-                            ideasLayout = .list
-                        } label: {
-                            Label("list", systemImage: "list.bullet")
-                        }
-                        .disabled(ideasLayout == .list)
-
-                        Button {
-                            ideasLayout = .board
-                        } label: {
-                            Label("board", systemImage: "rectangle.split.3x1")
-                        }
-                        .disabled(ideasLayout == .board)
+                HStack(spacing: 12) {
+                    Button {
+                        aiInputMode.toggle()
+                    } label: {
+                        Image(systemName: aiInputMode ? "sparkles" : "pencil.line")
+                            .font(.system(size: 14))
+                            .foregroundStyle(Color.white.opacity(0.5))
                     }
 
-                    if ideasLayout == .list {
-                        Section("sort by") {
-                            Picker("sort", selection: $sortOption) {
-                                ForEach(IdeaSort.allCases, id: \.self) { option in
-                                    Text(option.label).tag(option)
-                                }
+                    Button {
+                        showFilterDisplay = true
+                    } label: {
+                        HStack(spacing: 4) {
+                            Image(systemName: "slider.horizontal.3")
+                                .font(.system(size: 14))
+                            if filterState.activeFilterCount > 0 {
+                                Text("\(filterState.activeFilterCount)")
+                                    .font(.system(size: 10, weight: .medium))
+                                    .padding(.horizontal, 4)
+                                    .padding(.vertical, 1)
+                                    .background(Color.white.opacity(0.15))
+                                    .clipShape(Capsule())
                             }
                         }
+                        .foregroundStyle(Color.white.opacity(filterState.isActive ? 0.8 : 0.5))
                     }
-
-                    Section {
-                        Button {
-                            aiInputMode.toggle()
-                        } label: {
-                            Label(
-                                aiInputMode ? "switch to normal" : "switch to ai",
-                                systemImage: aiInputMode ? "pencil.line" : "sparkles"
-                            )
-                        }
-                    }
-                } label: {
-                    Image(systemName: "line.3.horizontal.decrease")
-                        .font(.system(size: 14))
                 }
             }
+        }
+        .sheet(isPresented: $showFilterDisplay) {
+            NavigationStack {
+                FilterDisplaySheet(
+                    filterState: filterState,
+                    sortOption: $sortOption,
+                    ideasLayout: $ideasLayout,
+                    groupBy: $groupBy,
+                    allTags: allTags,
+                    allCategories: allCategories
+                )
+                .toolbar {
+                    ToolbarItem(placement: .topBarTrailing) {
+                        Button("Done") { showFilterDisplay = false }
+                            .font(.custom("Switzer-Medium", size: 15))
+                    }
+                }
+            }
+            .presentationDetents([.medium, .large])
+            .presentationDragIndicator(.visible)
         }
         .sheet(item: $selectedIdea) { idea in
             NavigationStack {
@@ -720,18 +769,65 @@ struct ContentView: View {
     // macOS-only toolbar (iOS uses native .searchable + inline toolbar in iOSIdeasPage)
     private var ideasToolbar: some View {
         HStack(spacing: 12) {
-            HStack(spacing: 2) {
-                layoutButton(icon: "list.bullet", layout: .list)
-                layoutButton(icon: "rectangle.split.3x1", layout: .board)
+            // Folder breadcrumb
+            if let folder = selectedFolder {
+                HStack(spacing: 4) {
+                    Image(systemName: folder.icon)
+                        .font(.system(size: 10))
+                        .foregroundStyle((folder.color ?? .white).opacity(0.5))
+                    Text(folder.breadcrumb)
+                        .font(.custom("Switzer-Medium", size: 12))
+                        .foregroundStyle(Color.white.opacity(0.5))
+                        .lineLimit(1)
+                }
             }
-            .padding(3)
-            .background(
-                RoundedRectangle(cornerRadius: 7)
-                    .fill(Color.white.opacity(0.04))
-            )
 
-            if ideasLayout == .list {
-                sortPills
+            // Filter / Display button
+            Button {
+                showFilterDisplay.toggle()
+            } label: {
+                HStack(spacing: 5) {
+                    Image(systemName: "slider.horizontal.3")
+                        .font(.system(size: 11))
+                    Text("Filter")
+                        .font(.custom("Switzer-Medium", size: 12))
+                    if filterState.activeFilterCount > 0 {
+                        Text("\(filterState.activeFilterCount)")
+                            .font(.custom("Switzer-Medium", size: 10))
+                            .foregroundStyle(Color.white.opacity(0.85))
+                            .padding(.horizontal, 5)
+                            .padding(.vertical, 1)
+                            .background(Color.white.opacity(0.15))
+                            .clipShape(Capsule())
+                    }
+                }
+                .foregroundStyle(Color.white.opacity(filterState.isActive ? 0.8 : 0.4))
+                .padding(.horizontal, 10)
+                .padding(.vertical, 6)
+                .background(
+                    RoundedRectangle(cornerRadius: 7)
+                        .fill(Color.white.opacity(filterState.isActive ? 0.08 : 0.04))
+                )
+                .overlay(
+                    RoundedRectangle(cornerRadius: 7)
+                        .strokeBorder(Color.white.opacity(filterState.isActive ? 0.15 : 0.06), lineWidth: 1)
+                )
+            }
+            .buttonStyle(.plain)
+            .popover(isPresented: $showFilterDisplay) {
+                FilterDisplaySheet(
+                    filterState: filterState,
+                    sortOption: $sortOption,
+                    ideasLayout: $ideasLayout,
+                    groupBy: $groupBy,
+                    allTags: allTags,
+                    allCategories: allCategories
+                )
+            }
+
+            // Active filter pills (quick remove)
+            if filterState.isActive {
+                activeFilterPills
             }
 
             Spacer()
@@ -759,56 +855,125 @@ struct ContentView: View {
         .padding(.bottom, 8)
     }
 
-    private var sortPills: some View {
-        HStack(spacing: 6) {
-            ForEach(IdeaSort.allCases, id: \.self) { option in
-                Button {
-                    withAnimation(.easeInOut(duration: 0.15)) { sortOption = option }
-                } label: {
-                    Text(option.label)
-                        .font(.custom("Switzer-Light", size: 11))
-                        .foregroundStyle(Color.white.opacity(sortOption == option ? 0.8 : 0.25))
-                        .padding(.horizontal, 10)
-                        .padding(.vertical, 5)
-                        .background(
-                            Capsule()
-                                .fill(Color.white.opacity(sortOption == option ? 0.08 : 0))
-                        )
-                        .overlay(
-                            Capsule()
-                                .strokeBorder(Color.white.opacity(sortOption == option ? 0.15 : 0.06), lineWidth: 1)
-                        )
-                        .contentShape(Capsule())
+    @ViewBuilder
+    private var activeFilterPills: some View {
+        HStack(spacing: 4) {
+            if filterState.showDone != nil {
+                removableFilterPill(filterState.showDone == true ? "Done" : "Active") {
+                    filterState.showDone = nil
                 }
-                .buttonStyle(.plain)
+            }
+            if !filterState.priorityFilter.isEmpty {
+                let labels = filterState.priorityFilter.compactMap { Idea.Priority(rawValue: $0)?.label }
+                removableFilterPill(labels.joined(separator: ", ")) {
+                    filterState.priorityFilter = []
+                }
+            }
+            if filterState.dueDateFilter != .all {
+                removableFilterPill(filterState.dueDateFilter.rawValue) {
+                    filterState.dueDateFilter = .all
+                }
+            }
+            if !filterState.tagFilter.isEmpty {
+                removableFilterPill(filterState.tagFilter.joined(separator: ", ")) {
+                    filterState.tagFilter = []
+                }
             }
         }
     }
 
-    private func layoutButton(icon: String, layout: IdeasLayout) -> some View {
+    private func removableFilterPill(_ label: String, onRemove: @escaping () -> Void) -> some View {
         Button {
-            withAnimation(.easeInOut(duration: 0.2)) { ideasLayout = layout }
+            withAnimation(.easeInOut(duration: 0.15)) { onRemove() }
         } label: {
-            Image(systemName: icon)
-                .font(.system(size: 11))
-                .foregroundStyle(Color.white.opacity(ideasLayout == layout ? 0.8 : 0.25))
-                .frame(width: 26, height: 22)
-                .background(
-                    RoundedRectangle(cornerRadius: 5)
-                        .fill(Color.white.opacity(ideasLayout == layout ? 0.08 : 0))
-                )
-                .contentShape(Rectangle())
+            HStack(spacing: 4) {
+                Text(label)
+                    .font(.custom("Switzer-Regular", size: 10))
+                Image(systemName: "xmark")
+                    .font(.system(size: 7, weight: .bold))
+            }
+            .foregroundStyle(Color.white.opacity(0.6))
+            .padding(.horizontal, 8)
+            .padding(.vertical, 4)
+            .background(
+                Capsule()
+                    .fill(Color.white.opacity(0.08))
+            )
         }
         .buttonStyle(.plain)
     }
 
     // MARK: - List Content
 
+    /// Grouped ideas for the list view.
+    private var groupedIdeas: [(key: String, ideas: [Idea])] {
+        let sorted = sortedIdeas
+        guard groupBy != .none else {
+            return [("", sorted)]
+        }
+
+        var groups: [String: [Idea]] = [:]
+        for idea in sorted {
+            let key: String
+            switch groupBy {
+            case .none:
+                key = ""
+            case .tag:
+                key = idea.visibleTags.first ?? "untagged"
+            case .category:
+                key = idea.category.isEmpty ? "uncategorized" : idea.category
+            case .priority:
+                key = idea.priorityLevel.label
+            case .status:
+                key = idea.isDone ? "done" : "active"
+            case .folder:
+                key = idea.folder?.name ?? "no folder"
+            case .dueDate:
+                switch idea.dueStatus {
+                case .none: key = "no due date"
+                case .overdue: key = "overdue"
+                case .today: key = "today"
+                case .upcoming: key = "upcoming"
+                case .future: key = "future"
+                }
+            }
+            groups[key, default: []].append(idea)
+        }
+
+        return groups.sorted { $0.key < $1.key }.map { (key: $0.key, ideas: $0.value) }
+    }
+
     private var ideasListContent: some View {
         ScrollView {
             LazyVStack(alignment: .leading, spacing: 0) {
-                ForEach(sortedIdeas) { idea in
-                    ideaListRow(idea: idea)
+                let groups = groupedIdeas
+                ForEach(groups, id: \.key) { group in
+                    if groupBy != .none && !group.key.isEmpty {
+                        // Section header
+                        HStack(spacing: 8) {
+                            Text(group.key)
+                                .font(.custom("Switzer-Semibold", size: 12))
+                                .foregroundStyle(Color.white.opacity(0.4))
+                            Text("\(group.ideas.count)")
+                                .font(.custom("Switzer-Regular", size: 10))
+                                .foregroundStyle(Color.white.opacity(0.2))
+                                .padding(.horizontal, 6)
+                                .padding(.vertical, 1)
+                                .background(Color.white.opacity(0.06))
+                                .clipShape(Capsule())
+                            Spacer()
+                        }
+                        #if os(macOS)
+                        .padding(.horizontal, 24)
+                        #else
+                        .padding(.horizontal, 16)
+                        #endif
+                        .padding(.top, 16)
+                        .padding(.bottom, 4)
+                    }
+                    ForEach(group.ideas) { idea in
+                        ideaListRow(idea: idea)
+                    }
                 }
             }
             .padding(.top, 8)
@@ -833,12 +998,41 @@ struct ContentView: View {
         #endif
         .transition(.opacity.combined(with: .move(edge: .top)))
         .contextMenu {
-            Button(role: .destructive) {
-                ideaToDelete = idea
-                showDeleteConfirm = true
+            ideaContextMenu(idea: idea)
+        }
+    }
+
+    @ViewBuilder
+    private func ideaContextMenu(idea: Idea) -> some View {
+        // Move to folder
+        Menu("Move to folder") {
+            Button {
+                idea.folder = nil
+                try? modelContext.save()
             } label: {
-                Label("Delete", systemImage: "trash")
+                Label("No folder", systemImage: "tray")
             }
+
+            let descriptor = FetchDescriptor<Folder>()
+            if let folders = try? modelContext.fetch(descriptor) {
+                ForEach(folders.sorted(by: { $0.name < $1.name })) { folder in
+                    Button {
+                        idea.folder = folder
+                        try? modelContext.save()
+                    } label: {
+                        Label(folder.breadcrumb, systemImage: folder.icon)
+                    }
+                }
+            }
+        }
+
+        Divider()
+
+        Button(role: .destructive) {
+            ideaToDelete = idea
+            showDeleteConfirm = true
+        } label: {
+            Label("Delete", systemImage: "trash")
         }
     }
 
@@ -1125,6 +1319,16 @@ struct IdeaRow: View {
                         Text(idea.category)
                             .font(.custom("Switzer-Light", size: 11))
                             .foregroundStyle((rowAccent ?? .white).opacity(0.35))
+                    }
+
+                    if let folder = idea.folder {
+                        HStack(spacing: 3) {
+                            Image(systemName: folder.icon)
+                                .font(.system(size: 8))
+                            Text(folder.name)
+                                .font(.custom("Switzer-Light", size: 10))
+                        }
+                        .foregroundStyle((folder.color ?? (rowAccent ?? .white)).opacity(0.35))
                     }
 
                     let linkCount = idea.allLinks.count
