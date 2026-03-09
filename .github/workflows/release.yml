@@ -21,12 +21,46 @@ jobs:
       - name: Build and create DMG + ZIP
         run: ./scripts/build-dmg.sh "${{ steps.version.outputs.VERSION }}"
 
+      - name: Sign update with Sparkle
+        id: sign
+        env:
+          SPARKLE_PRIVATE_KEY: ${{ secrets.SPARKLE_PRIVATE_KEY }}
+        run: |
+          VERSION="${{ steps.version.outputs.VERSION }}"
+          SIGN_TOOL=$(find ~/Library/Developer/Xcode/DerivedData -path "*/Sparkle.framework/../bin/sign_update" -not -path "*/old_dsa_scripts/*" 2>/dev/null | head -1)
+
+          if [ -z "$SIGN_TOOL" ]; then
+            # Build first to get Sparkle tools
+            xcodebuild -scheme ideas -destination 'platform=macOS' -resolvePackageDependencies
+            SIGN_TOOL=$(find ~/Library/Developer/Xcode/DerivedData -path "*/Sparkle.framework/../bin/sign_update" -not -path "*/old_dsa_scripts/*" 2>/dev/null | head -1)
+          fi
+
+          if [ -n "$SIGN_TOOL" ] && [ -n "$SPARKLE_PRIVATE_KEY" ]; then
+            SIGNATURE=$("$SIGN_TOOL" "build/ideas-${VERSION}.zip" --ed-key-file <(echo "$SPARKLE_PRIVATE_KEY") 2>&1)
+            echo "SIGNATURE=$SIGNATURE" >> "$GITHUB_OUTPUT"
+            echo "==> Signed: $SIGNATURE"
+          else
+            echo "SIGNATURE=" >> "$GITHUB_OUTPUT"
+            echo "==> Warning: Could not sign update"
+          fi
+
       - name: Generate Sparkle appcast
         run: |
           VERSION="${{ steps.version.outputs.VERSION }}"
           ZIP_URL="https://github.com/${{ github.repository }}/releases/download/${GITHUB_REF_NAME}/ideas-${VERSION}.zip"
           ZIP_SIZE=$(stat -f%z "build/ideas-${VERSION}.zip")
           PUB_DATE=$(date -R)
+          SIGNATURE='${{ steps.sign.outputs.SIGNATURE }}'
+
+          # Build enclosure attributes
+          ENCLOSURE_ATTRS="url=\"${ZIP_URL}\" length=\"${ZIP_SIZE}\" type=\"application/octet-stream\""
+          if [ -n "$SIGNATURE" ]; then
+            # Signature format from sign_update: sparkle:edSignature="..." length="..."
+            ED_SIG=$(echo "$SIGNATURE" | grep -o 'sparkle:edSignature="[^"]*"' || true)
+            if [ -n "$ED_SIG" ]; then
+              ENCLOSURE_ATTRS="${ENCLOSURE_ATTRS} ${ED_SIG}"
+            fi
+          fi
 
           cat > appcast.xml << APPCAST_EOF
           <?xml version="1.0" encoding="utf-8"?>
@@ -41,7 +75,7 @@ jobs:
                       <sparkle:version>${VERSION}</sparkle:version>
                       <sparkle:shortVersionString>${VERSION}</sparkle:shortVersionString>
                       <sparkle:minimumSystemVersion>15.0</sparkle:minimumSystemVersion>
-                      <enclosure url="${ZIP_URL}" length="${ZIP_SIZE}" type="application/octet-stream" />
+                      <enclosure ${ENCLOSURE_ATTRS} />
                   </item>
               </channel>
           </rss>
