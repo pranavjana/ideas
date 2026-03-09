@@ -30,13 +30,14 @@ extension EnvironmentValues {
 }
 
 enum Page: String, CaseIterable {
-    case ideas, graph, chat, settings
+    case ideas, graph, chat, focus, settings
 
     var label: String {
         switch self {
         case .ideas: "ideas"
         case .graph: "graph"
         case .chat: "ai chat"
+        case .focus: "focus"
         case .settings: "settings"
         }
     }
@@ -46,6 +47,7 @@ enum Page: String, CaseIterable {
         case .ideas: "square.and.pencil"
         case .graph: "circle.grid.cross"
         case .chat: "bubble.left"
+        case .focus: "scope"
         case .settings: "gearshape"
         }
     }
@@ -76,6 +78,7 @@ struct ContentView: View {
     @Query private var profiles: [UserProfile]
     @State private var viewModel: IdeasViewModel?
     @State private var chatViewModel: ChatViewModel?
+    @State private var focusViewModel: FocusViewModel?
     @State private var currentPage: Page = .ideas
     #if os(iOS)
     @State private var selectedPage: Page? = .ideas
@@ -185,7 +188,7 @@ struct ContentView: View {
         }
         .environment(\.tagColors, profiles.first?.tagColors ?? [:])
         .frame(maxWidth: .infinity, maxHeight: .infinity)
-        .background(Color(red: 0.09, green: 0.09, blue: 0.09))
+        .background(Color.bgBase)
         .onAppear { setupViewModels() }
         .background {
             Button("") { currentPage = .settings }
@@ -216,7 +219,7 @@ struct ContentView: View {
         #else
         NavigationSplitView {
             List(selection: $selectedPage) {
-                ForEach([Page.ideas, .graph, .chat], id: \.self) { page in
+                ForEach([Page.ideas, .graph, .chat, .focus], id: \.self) { page in
                     NavigationLink(value: page) {
                         Label(page.label, systemImage: page.icon)
                     }
@@ -231,15 +234,14 @@ struct ContentView: View {
             .listStyle(.sidebar)
             .navigationTitle("ideas.")
             .scrollContentBackground(.hidden)
-            .background(Color(red: 0.07, green: 0.07, blue: 0.07))
+            .background(Color.bgSidebar)
         } detail: {
             iOSDetailView
         }
         .onChange(of: selectedPage) { _, newValue in
             if let newValue { currentPage = newValue }
         }
-        .preferredColorScheme(.dark)
-        .tint(.white)
+        .tint(Color.fg)
         .environment(\.tagColors, profiles.first?.tagColors ?? [:])
         .onAppear { setupViewModels() }
         #endif
@@ -254,6 +256,11 @@ struct ContentView: View {
             vm.ideasViewModel = viewModel
             chatViewModel = vm
         }
+        if focusViewModel == nil {
+            let vm = FocusViewModel(modelContext: modelContext)
+            vm.setIdeasViewModel(viewModel)
+            focusViewModel = vm
+        }
         #if os(macOS)
         isInputFocused = true
         #endif
@@ -266,14 +273,13 @@ struct ContentView: View {
             // Logo
             HStack(spacing: 8) {
                 Image("IdeasLogo")
-                    .renderingMode(.template)
+                    .renderingMode(.original)
                     .resizable()
                     .aspectRatio(contentMode: .fit)
-                    .frame(width: 32, height: 32)
-                    .foregroundStyle(Color.white.opacity(0.85))
+                    .frame(width: 40, height: 40)
                 Text("ideas.")
                     .font(.custom("Gambarino-Regular", size: 24))
-                    .foregroundStyle(Color.white.opacity(0.85))
+                    .foregroundStyle(Color.fg.opacity(0.85))
             }
             .padding(.horizontal, 20)
             .padding(.top, 20)
@@ -281,25 +287,25 @@ struct ContentView: View {
 
             // Navigation
             VStack(spacing: 2) {
-                ForEach([Page.ideas, .graph, .chat], id: \.self) { page in
+                ForEach([Page.ideas, .graph, .chat, .focus], id: \.self) { page in
                     navItem(page: page)
                 }
             }
             .padding(.horizontal, 10)
 
             // Folder browser
-            if currentPage == .ideas {
-                Rectangle()
-                    .fill(Color.white.opacity(0.06))
-                    .frame(height: 1)
-                    .padding(.horizontal, 16)
-                    .padding(.vertical, 8)
+            Rectangle()
+                .fill(Color.fg.opacity(0.06))
+                .frame(height: 1)
+                .padding(.horizontal, 16)
+                .padding(.vertical, 8)
 
-                ScrollView {
-                    FolderBrowserView(selectedFolder: $selectedFolder)
+            ScrollView {
+                FolderBrowserView(selectedFolder: $selectedFolder) {
+                    withAnimation(.easeInOut(duration: 0.2)) { currentPage = .ideas }
                 }
-                .padding(.horizontal, 4)
             }
+            .padding(.horizontal, 4)
 
             Spacer()
 
@@ -311,7 +317,7 @@ struct ContentView: View {
             .padding(.bottom, 12)
         }
         .frame(width: 180)
-        .background(Color(red: 0.07, green: 0.07, blue: 0.07))
+        .background(Color.bgSidebar)
     }
 
     private func navItem(page: Page) -> some View {
@@ -325,14 +331,14 @@ struct ContentView: View {
                 Text(page.label)
                     .font(.custom("Switzer-Medium", size: 13))
             }
-            .foregroundStyle(Color.white.opacity(currentPage == page ? 0.85 : 0.25))
+            .foregroundStyle(Color.fg.opacity(currentPage == page ? 0.85 : 0.25))
             .frame(maxWidth: .infinity, alignment: .leading)
             .padding(.horizontal, 12)
             .padding(.vertical, 9)
             .contentShape(Rectangle())
             .background(
                 RoundedRectangle(cornerRadius: 8)
-                    .fill(Color.white.opacity(currentPage == page ? 0.06 : 0))
+                    .fill(Color.fg.opacity(currentPage == page ? 0.06 : 0))
             )
         }
         .buttonStyle(.plain)
@@ -349,6 +355,14 @@ struct ContentView: View {
             GraphView()
         case .chat:
             ChatView(ideasViewModel: viewModel)
+        case .focus:
+            if let focusVM = focusViewModel {
+                FocusView(viewModel: focusVM) { idea in
+                    withAnimation(.easeOut(duration: 0.25)) {
+                        selectedIdea = idea
+                    }
+                }
+            }
         case .settings:
             SettingsView()
         }
@@ -359,6 +373,21 @@ struct ContentView: View {
     private var iOSDetailView: some View {
         mainContent
             .navigationBarTitleDisplayMode(.inline)
+            .sheet(item: $selectedIdea) { idea in
+                NavigationStack {
+                    IdeaEditorPanel(idea: idea) {
+                        selectedIdea = nil
+                    }
+                    .toolbar {
+                        ToolbarItem(placement: .topBarLeading) {
+                            Button("done") { selectedIdea = nil }
+                                .font(.custom("Switzer-Medium", size: 15))
+                        }
+                    }
+                }
+                .presentationDetents([.large])
+                .presentationDragIndicator(.visible)
+            }
     }
     #endif
 
@@ -381,14 +410,14 @@ struct ContentView: View {
                 ideasInputBar
                     .overlay(alignment: .top) {
                         Rectangle()
-                            .fill(Color.white.opacity(0.06))
+                            .fill(Color.fg.opacity(0.06))
                             .frame(height: 1)
                     }
             }
             .frame(maxWidth: .infinity, maxHeight: .infinity)
 
         }
-        .background(Color(red: 0.09, green: 0.09, blue: 0.09))
+        .background(Color.bgBase)
         #else
         iOSIdeasPage
         #endif
@@ -397,7 +426,7 @@ struct ContentView: View {
     #if os(iOS)
     private var iOSIdeasPage: some View {
         ZStack {
-            Color(red: 0.09, green: 0.09, blue: 0.09)
+            Color.bgBase
                 .ignoresSafeArea()
 
             if ideasLayout == .list {
@@ -418,7 +447,7 @@ struct ContentView: View {
                     } label: {
                         Image(systemName: aiInputMode ? "sparkles" : "pencil.line")
                             .font(.system(size: 14))
-                            .foregroundStyle(Color.white.opacity(0.5))
+                            .foregroundStyle(Color.fg.opacity(0.5))
                     }
 
                     Button {
@@ -432,11 +461,11 @@ struct ContentView: View {
                                     .font(.system(size: 10, weight: .medium))
                                     .padding(.horizontal, 4)
                                     .padding(.vertical, 1)
-                                    .background(Color.white.opacity(0.15))
+                                    .background(Color.fg.opacity(0.15))
                                     .clipShape(Capsule())
                             }
                         }
-                        .foregroundStyle(Color.white.opacity(filterState.isActive ? 0.8 : 0.5))
+                        .foregroundStyle(Color.fg.opacity(filterState.isActive ? 0.8 : 0.5))
                     }
                 }
             }
@@ -513,7 +542,7 @@ struct ContentView: View {
             TextField(aiInputMode ? "ask ai to do something..." : "what's on your mind...", text: $inputText)
                 .textFieldStyle(.plain)
                 .font(.custom("Switzer-Regular", size: 15))
-                .foregroundStyle(Color.white.opacity(0.9))
+                .foregroundStyle(Color.fg.opacity(0.9))
                 .padding(.horizontal, 12)
                 .padding(.vertical, 16)
                 .focused($isInputFocused)
@@ -526,7 +555,7 @@ struct ContentView: View {
                     .padding(.trailing, 16)
             }
         }
-        .background(Color(red: 0.09, green: 0.09, blue: 0.09))
+        .background(Color.bgBase)
     }
 
 
@@ -545,14 +574,14 @@ struct ContentView: View {
                             .frame(width: 12, height: 12)
                         Text(activity)
                             .font(.custom("Switzer-Light", size: 11))
-                            .foregroundStyle(Color.white.opacity(0.35))
+                            .foregroundStyle(Color.fg.opacity(0.35))
                     }
                 }
 
                 if !responseText.isEmpty {
                     Text(responseText)
                         .font(.custom("Switzer-Regular", size: 13))
-                        .foregroundStyle(Color.white.opacity(0.75))
+                        .foregroundStyle(Color.fg.opacity(0.75))
                         .lineSpacing(3)
                         .textSelection(.enabled)
                 }
@@ -561,7 +590,7 @@ struct ContentView: View {
             .frame(maxWidth: .infinity, alignment: .leading)
             .background(
                 RoundedRectangle(cornerRadius: 10)
-                    .fill(Color.white.opacity(0.05))
+                    .fill(Color.fg.opacity(0.05))
             )
             #if os(macOS)
             .padding(.horizontal, 24)
@@ -579,7 +608,7 @@ struct ContentView: View {
                 .font(.system(size: 12))
                 .foregroundStyle(aiInputMode
                     ? Color(red: 0.6, green: 0.5, blue: 1.0)
-                    : Color.white.opacity(0.35))
+                    : Color.fg.opacity(0.35))
                 .frame(width: 30, height: 30)
                 .background(
                     RoundedRectangle(cornerRadius: 6)
@@ -774,10 +803,10 @@ struct ContentView: View {
                 HStack(spacing: 4) {
                     Image(systemName: folder.icon)
                         .font(.system(size: 10))
-                        .foregroundStyle((folder.color ?? .white).opacity(0.5))
+                        .foregroundStyle((folder.color ?? .fg).opacity(0.5))
                     Text(folder.breadcrumb)
                         .font(.custom("Switzer-Medium", size: 12))
-                        .foregroundStyle(Color.white.opacity(0.5))
+                        .foregroundStyle(Color.fg.opacity(0.5))
                         .lineLimit(1)
                 }
             }
@@ -794,23 +823,23 @@ struct ContentView: View {
                     if filterState.activeFilterCount > 0 {
                         Text("\(filterState.activeFilterCount)")
                             .font(.custom("Switzer-Medium", size: 10))
-                            .foregroundStyle(Color.white.opacity(0.85))
+                            .foregroundStyle(Color.fg.opacity(0.85))
                             .padding(.horizontal, 5)
                             .padding(.vertical, 1)
-                            .background(Color.white.opacity(0.15))
+                            .background(Color.fg.opacity(0.15))
                             .clipShape(Capsule())
                     }
                 }
-                .foregroundStyle(Color.white.opacity(filterState.isActive ? 0.8 : 0.4))
+                .foregroundStyle(Color.fg.opacity(filterState.isActive ? 0.8 : 0.4))
                 .padding(.horizontal, 10)
                 .padding(.vertical, 6)
                 .background(
                     RoundedRectangle(cornerRadius: 7)
-                        .fill(Color.white.opacity(filterState.isActive ? 0.08 : 0.04))
+                        .fill(Color.fg.opacity(filterState.isActive ? 0.08 : 0.04))
                 )
                 .overlay(
                     RoundedRectangle(cornerRadius: 7)
-                        .strokeBorder(Color.white.opacity(filterState.isActive ? 0.15 : 0.06), lineWidth: 1)
+                        .strokeBorder(Color.fg.opacity(filterState.isActive ? 0.15 : 0.06), lineWidth: 1)
                 )
             }
             .buttonStyle(.plain)
@@ -835,18 +864,18 @@ struct ContentView: View {
             HStack(spacing: 6) {
                 Image(systemName: "magnifyingglass")
                     .font(.system(size: 11))
-                    .foregroundStyle(Color.white.opacity(0.25))
+                    .foregroundStyle(Color.fg.opacity(0.25))
                 TextField("search...", text: $searchText)
                     .textFieldStyle(.plain)
                     .font(.custom("Switzer-Regular", size: 13))
-                    .foregroundStyle(Color.white.opacity(0.8))
+                    .foregroundStyle(Color.fg.opacity(0.8))
             }
             .padding(.horizontal, 10)
             .padding(.vertical, 8)
             .background(
                 RoundedRectangle(cornerRadius: 8)
-                    .fill(Color.white.opacity(0.04))
-                    .stroke(Color.white.opacity(searchText.isEmpty ? 0.06 : 0.12), lineWidth: 1)
+                    .fill(Color.fg.opacity(0.04))
+                    .stroke(Color.fg.opacity(searchText.isEmpty ? 0.06 : 0.12), lineWidth: 1)
             )
             .frame(width: 180)
         }
@@ -892,12 +921,12 @@ struct ContentView: View {
                 Image(systemName: "xmark")
                     .font(.system(size: 7, weight: .bold))
             }
-            .foregroundStyle(Color.white.opacity(0.6))
+            .foregroundStyle(Color.fg.opacity(0.6))
             .padding(.horizontal, 8)
             .padding(.vertical, 4)
             .background(
                 Capsule()
-                    .fill(Color.white.opacity(0.08))
+                    .fill(Color.fg.opacity(0.08))
             )
         }
         .buttonStyle(.plain)
@@ -953,13 +982,13 @@ struct ContentView: View {
                         HStack(spacing: 8) {
                             Text(group.key)
                                 .font(.custom("Switzer-Semibold", size: 12))
-                                .foregroundStyle(Color.white.opacity(0.4))
+                                .foregroundStyle(Color.fg.opacity(0.4))
                             Text("\(group.ideas.count)")
                                 .font(.custom("Switzer-Regular", size: 10))
-                                .foregroundStyle(Color.white.opacity(0.2))
+                                .foregroundStyle(Color.fg.opacity(0.2))
                                 .padding(.horizontal, 6)
                                 .padding(.vertical, 1)
-                                .background(Color.white.opacity(0.06))
+                                .background(Color.fg.opacity(0.06))
                                 .clipShape(Capsule())
                             Spacer()
                         }
@@ -1058,7 +1087,7 @@ struct ContentView: View {
         // iOS: vertical grouped sections instead of horizontal kanban
         List {
             ForEach(boardColumns, id: \.tag) { column in
-                let columnColor = profiles.first?.tagColors[column.tag].flatMap { Color(hex: $0) }
+                let columnColor = profiles.first?.tagColors[column.tag].flatMap { Color.accent(hex: $0) }
                 Section {
                     ForEach(column.ideas) { idea in
                         boardCard(idea: idea)
@@ -1072,14 +1101,14 @@ struct ContentView: View {
                 } header: {
                     HStack(spacing: 8) {
                         Circle()
-                            .fill((columnColor ?? .white).opacity(0.5))
+                            .fill((columnColor ?? .fg).opacity(0.5))
                             .frame(width: 6, height: 6)
                         Text(column.tag)
                             .font(.custom("Switzer-Semibold", size: 13))
-                            .foregroundStyle((columnColor ?? .white).opacity(0.8))
+                            .foregroundStyle((columnColor ?? .fg).opacity(0.8))
                         Text("\(column.ideas.count)")
                             .font(.custom("Switzer-Regular", size: 11))
-                            .foregroundStyle(Color.white.opacity(0.25))
+                            .foregroundStyle(Color.fg.opacity(0.25))
                     }
                 }
             }
@@ -1102,22 +1131,22 @@ struct ContentView: View {
     }
 
     private func boardColumn(tag: String, ideas: [Idea]) -> some View {
-        let columnColor = profiles.first?.tagColors[tag].flatMap { Color(hex: $0) }
+        let columnColor = profiles.first?.tagColors[tag].flatMap { Color.accent(hex: $0) }
         return VStack(alignment: .leading, spacing: 0) {
             // Column header
             HStack(spacing: 8) {
                 Circle()
-                    .fill((columnColor ?? .white).opacity(0.5))
+                    .fill((columnColor ?? .fg).opacity(0.5))
                     .frame(width: 6, height: 6)
                 Text(tag)
                     .font(.custom("Switzer-Semibold", size: 13))
-                    .foregroundStyle((columnColor ?? .white).opacity(0.8))
+                    .foregroundStyle((columnColor ?? .fg).opacity(0.8))
                 Text("\(ideas.count)")
                     .font(.custom("Switzer-Regular", size: 11))
-                    .foregroundStyle(Color.white.opacity(0.25))
+                    .foregroundStyle(Color.fg.opacity(0.25))
                     .padding(.horizontal, 6)
                     .padding(.vertical, 1)
-                    .background(Color.white.opacity(0.06))
+                    .background(Color.fg.opacity(0.06))
                     .clipShape(Capsule())
             }
             .padding(.horizontal, 14)
@@ -1125,7 +1154,7 @@ struct ContentView: View {
             .padding(.bottom, 10)
 
             Rectangle()
-                .fill(Color.white.opacity(0.06))
+                .fill(Color.fg.opacity(0.06))
                 .frame(height: 1)
                 .padding(.horizontal, 10)
 
@@ -1149,8 +1178,8 @@ struct ContentView: View {
         .frame(width: 260)
         .background(
             RoundedRectangle(cornerRadius: 12)
-                .fill(Color.white.opacity(0.03))
-                .stroke(Color.white.opacity(0.04), lineWidth: 1)
+                .fill(Color.fg.opacity(0.03))
+                .stroke(Color.fg.opacity(0.04), lineWidth: 1)
         )
     }
 
@@ -1167,8 +1196,8 @@ struct ContentView: View {
                 Image(systemName: idea.isDone ? "checkmark.circle.fill" : "circle")
                     .font(.system(size: 13))
                     .foregroundStyle(idea.isDone
-                        ? (accent?.opacity(0.35) ?? Color.white.opacity(0.45))
-                        : (accent?.opacity(0.2) ?? Color.white.opacity(0.12)))
+                        ? (accent?.opacity(0.35) ?? Color.fg.opacity(0.45))
+                        : (accent?.opacity(0.2) ?? Color.fg.opacity(0.12)))
             }
             .buttonStyle(.plain)
             .padding(.top, 2)
@@ -1177,9 +1206,9 @@ struct ContentView: View {
                 Text(idea.text)
                     .font(.custom("Switzer-Regular", size: 13))
                     .foregroundStyle(idea.isDone
-                        ? (accent?.opacity(0.25) ?? Color.white.opacity(0.25))
-                        : (accent?.opacity(0.9) ?? Color.white.opacity(0.9)))
-                    .strikethrough(idea.isDone, color: (accent ?? .white).opacity(0.15))
+                        ? (accent?.opacity(0.25) ?? Color.fg.opacity(0.25))
+                        : (accent?.opacity(0.9) ?? Color.fg.opacity(0.9)))
+                    .strikethrough(idea.isDone, color: (accent ?? .fg).opacity(0.15))
                     .lineSpacing(2)
                     .lineLimit(4)
 
@@ -1187,13 +1216,13 @@ struct ContentView: View {
                     let tc = profiles.first?.tagColors ?? [:]
                     HStack(spacing: 4) {
                         ForEach(idea.visibleTags.dropFirst(), id: \.self) { tag in
-                            let tagColor = tc[tag].flatMap { Color(hex: $0) }
+                            let tagColor = tc[tag].flatMap { Color.accent(hex: $0) }
                             Text(tag)
                                 .font(.custom("Switzer-Light", size: 9))
-                                .foregroundStyle((tagColor ?? .white).opacity(0.7))
+                                .foregroundStyle((tagColor ?? .fg).opacity(0.7))
                                 .padding(.horizontal, 6)
                                 .padding(.vertical, 2)
-                                .background((tagColor ?? .white).opacity(0.15))
+                                .background((tagColor ?? .fg).opacity(0.15))
                                 .clipShape(Capsule())
                         }
                     }
@@ -1202,21 +1231,21 @@ struct ContentView: View {
                 HStack(spacing: 6) {
                     Text(idea.createdAt.formatted(.dateTime.month(.abbreviated).day()))
                         .font(.custom("Switzer-Light", size: 10))
-                        .foregroundStyle((accent ?? .white).opacity(0.22))
+                        .foregroundStyle((accent ?? .fg).opacity(0.22))
 
                     let linkCount = idea.allLinks.count
                     if linkCount > 0 {
                         Circle()
-                            .fill((accent ?? .white).opacity(0.15))
+                            .fill((accent ?? .fg).opacity(0.15))
                             .frame(width: 3, height: 3)
                         Text("\(linkCount) link\(linkCount == 1 ? "" : "s")")
                             .font(.custom("Switzer-Light", size: 10))
-                            .foregroundStyle((accent ?? .white).opacity(0.22))
+                            .foregroundStyle((accent ?? .fg).opacity(0.22))
                     }
 
                     if let formatted = idea.formattedDueDate {
                         Circle()
-                            .fill((accent ?? .white).opacity(0.15))
+                            .fill((accent ?? .fg).opacity(0.15))
                             .frame(width: 3, height: 3)
                         HStack(spacing: 3) {
                             Image(systemName: idea.recurring != nil ? "arrow.trianglehead.2.clockwise" : "calendar")
@@ -1233,7 +1262,7 @@ struct ContentView: View {
         .frame(maxWidth: .infinity, alignment: .leading)
         .background(
             RoundedRectangle(cornerRadius: 8)
-                .fill((accent ?? .white).opacity(0.04))
+                .fill((accent ?? .fg).opacity(0.04))
         )
     }
 
@@ -1265,8 +1294,8 @@ struct IdeaRow: View {
                 Image(systemName: idea.isDone ? "checkmark.circle.fill" : "circle")
                     .font(.system(size: 14))
                     .foregroundStyle(idea.isDone
-                        ? (rowAccent?.opacity(0.4) ?? Color.white.opacity(0.5))
-                        : (rowAccent?.opacity(0.25) ?? Color.white.opacity(0.15)))
+                        ? (rowAccent?.opacity(0.4) ?? Color.fg.opacity(0.5))
+                        : (rowAccent?.opacity(0.25) ?? Color.fg.opacity(0.15)))
             }
             .buttonStyle(.plain)
             .padding(.top, 2)
@@ -1275,22 +1304,22 @@ struct IdeaRow: View {
                 Text(idea.text)
                     .font(.custom("Switzer-Regular", size: 15))
                     .foregroundStyle(idea.isDone
-                        ? (rowAccent?.opacity(0.3) ?? Color.white.opacity(0.3))
-                        : (rowAccent?.opacity(0.9) ?? Color.white.opacity(0.85)))
-                    .strikethrough(idea.isDone, color: (rowAccent ?? .white).opacity(0.2))
+                        ? (rowAccent?.opacity(0.3) ?? Color.fg.opacity(0.3))
+                        : (rowAccent?.opacity(0.9) ?? Color.fg.opacity(0.85)))
+                    .strikethrough(idea.isDone, color: (rowAccent ?? .fg).opacity(0.2))
                     .contentShape(Rectangle())
                     .onTapGesture { onTap?() }
 
                 if idea.isProcessing {
                     Text("...")
                         .font(.custom("Switzer-Light", size: 11))
-                        .foregroundStyle(Color.white.opacity(0.2))
+                        .foregroundStyle(Color.fg.opacity(0.2))
                 }
 
                 HStack(spacing: 8) {
                     Text(idea.createdAt.formatted(.dateTime.hour().minute()))
                         .font(.custom("Switzer-Light", size: 11))
-                        .foregroundStyle((rowAccent ?? .white).opacity(0.25))
+                        .foregroundStyle((rowAccent ?? .fg).opacity(0.25))
 
                     if idea.priorityLevel != .none {
                         Text(idea.priorityLevel.label)
@@ -1304,13 +1333,13 @@ struct IdeaRow: View {
 
                     if !idea.isProcessing {
                         ForEach(idea.visibleTags, id: \.self) { tag in
-                            let tagColor = tagColors[tag].flatMap { Color(hex: $0) }
+                            let tagColor = tagColors[tag].flatMap { Color.accent(hex: $0) }
                             Text(tag)
                                 .font(.custom("Switzer-Light", size: 10))
-                                .foregroundStyle((tagColor ?? .white).opacity(0.7))
+                                .foregroundStyle((tagColor ?? .fg).opacity(0.7))
                                 .padding(.horizontal, 8)
                                 .padding(.vertical, 3)
-                                .background((tagColor ?? .white).opacity(0.15))
+                                .background((tagColor ?? .fg).opacity(0.15))
                                 .clipShape(Capsule())
                         }
                     }
@@ -1318,7 +1347,7 @@ struct IdeaRow: View {
                     if !idea.category.isEmpty {
                         Text(idea.category)
                             .font(.custom("Switzer-Light", size: 11))
-                            .foregroundStyle((rowAccent ?? .white).opacity(0.35))
+                            .foregroundStyle((rowAccent ?? .fg).opacity(0.35))
                     }
 
                     if let folder = idea.folder {
@@ -1335,7 +1364,7 @@ struct IdeaRow: View {
                     if linkCount > 0 {
                         Text("\(linkCount) link\(linkCount == 1 ? "" : "s")")
                             .font(.custom("Switzer-Light", size: 11))
-                            .foregroundStyle((rowAccent ?? .white).opacity(0.25))
+                            .foregroundStyle((rowAccent ?? .fg).opacity(0.25))
                     }
 
                     // Due date indicator
@@ -1352,7 +1381,7 @@ struct IdeaRow: View {
                                 Text("\(idea.updates.count) update\(idea.updates.count == 1 ? "" : "s")")
                                     .font(.custom("Switzer-Light", size: 11))
                             }
-                            .foregroundStyle((rowAccent ?? .white).opacity(0.3))
+                            .foregroundStyle((rowAccent ?? .fg).opacity(0.3))
                         }
                         .buttonStyle(.plain)
                     }
@@ -1366,7 +1395,7 @@ struct IdeaRow: View {
                             Text("\(progress.done)/\(progress.total)")
                                 .font(.custom("Switzer-Light", size: 11))
                         }
-                        .foregroundStyle((rowAccent ?? .white).opacity(progress.done == progress.total ? 0.4 : 0.3))
+                        .foregroundStyle((rowAccent ?? .fg).opacity(progress.done == progress.total ? 0.4 : 0.3))
                     }
                 }
 
@@ -1376,16 +1405,16 @@ struct IdeaRow: View {
                         ForEach(Array(idea.parsedUpdates.reversed().enumerated()), id: \.offset) { _, update in
                             HStack(alignment: .top, spacing: 8) {
                                 Circle()
-                                    .fill((rowAccent ?? .white).opacity(0.2))
+                                    .fill((rowAccent ?? .fg).opacity(0.2))
                                     .frame(width: 4, height: 4)
                                     .padding(.top, 5)
                                 VStack(alignment: .leading, spacing: 2) {
                                     Text(update.text)
                                         .font(.custom("Switzer-Regular", size: 12))
-                                        .foregroundStyle((rowAccent ?? .white).opacity(0.6))
+                                        .foregroundStyle((rowAccent ?? .fg).opacity(0.6))
                                     Text(update.date.formatted(.dateTime.month(.abbreviated).day().hour().minute()))
                                         .font(.custom("Switzer-Light", size: 10))
-                                        .foregroundStyle((rowAccent ?? .white).opacity(0.2))
+                                        .foregroundStyle((rowAccent ?? .fg).opacity(0.2))
                                 }
                             }
                         }
@@ -1406,14 +1435,14 @@ struct IdeaRow: View {
                                 } label: {
                                     Image(systemName: subtask.isDone ? "checkmark.square.fill" : "square")
                                         .font(.system(size: 11))
-                                        .foregroundStyle((rowAccent ?? .white).opacity(subtask.isDone ? 0.35 : 0.2))
+                                        .foregroundStyle((rowAccent ?? .fg).opacity(subtask.isDone ? 0.35 : 0.2))
                                 }
                                 .buttonStyle(.plain)
 
                                 Text(subtask.text)
                                     .font(.custom("Switzer-Regular", size: 12))
-                                    .foregroundStyle((rowAccent ?? .white).opacity(subtask.isDone ? 0.3 : 0.6))
-                                    .strikethrough(subtask.isDone, color: (rowAccent ?? .white).opacity(0.15))
+                                    .foregroundStyle((rowAccent ?? .fg).opacity(subtask.isDone ? 0.3 : 0.6))
+                                    .strikethrough(subtask.isDone, color: (rowAccent ?? .fg).opacity(0.15))
                             }
                         }
                     }
@@ -1425,7 +1454,7 @@ struct IdeaRow: View {
         .padding(isSelected ? 10 : 0)
         .background(
             RoundedRectangle(cornerRadius: 8)
-                .fill(isSelected ? (rowAccent ?? .white).opacity(0.06) : Color.clear)
+                .fill(isSelected ? (rowAccent ?? .fg).opacity(0.06) : Color.clear)
         )
         .contentShape(Rectangle())
     }
@@ -1458,7 +1487,7 @@ struct IdeaRow: View {
             Button { showDatePicker = true } label: {
                 Image(systemName: "calendar.badge.plus")
                     .font(.system(size: 10))
-                    .foregroundStyle(Color.white.opacity(0.15))
+                    .foregroundStyle(Color.fg.opacity(0.15))
             }
             .buttonStyle(.plain)
             .popover(isPresented: $showDatePicker) {
@@ -1495,7 +1524,7 @@ struct DatePickerPopover: View {
         VStack(alignment: .leading, spacing: 12) {
             Text("due date")
                 .font(.custom("Switzer-Semibold", size: 13))
-                .foregroundStyle(Color.white.opacity(0.8))
+                .foregroundStyle(Color.fg.opacity(0.8))
 
             DatePicker("", selection: $selectedDate, displayedComponents: .date)
                 .datePickerStyle(.graphical)
@@ -1507,7 +1536,7 @@ struct DatePickerPopover: View {
                 Toggle(isOn: $hasTime) {
                     Text("time")
                         .font(.custom("Switzer-Regular", size: 12))
-                        .foregroundStyle(Color.white.opacity(0.6))
+                        .foregroundStyle(Color.fg.opacity(0.6))
                 }
                 .toggleStyle(.switch)
                 .controlSize(.small)
@@ -1516,14 +1545,14 @@ struct DatePickerPopover: View {
                     TextField("HH:mm", text: $timeString)
                         .textFieldStyle(.plain)
                         .font(.custom("Switzer-Regular", size: 12))
-                        .foregroundStyle(Color.white.opacity(0.8))
+                        .foregroundStyle(Color.fg.opacity(0.8))
                         .frame(width: 50)
                         .padding(.horizontal, 8)
                         .padding(.vertical, 4)
                         .background(
                             RoundedRectangle(cornerRadius: 5)
-                                .fill(Color.white.opacity(0.06))
-                                .stroke(Color.white.opacity(0.1), lineWidth: 1)
+                                .fill(Color.fg.opacity(0.06))
+                                .stroke(Color.fg.opacity(0.1), lineWidth: 1)
                         )
                 }
             }
@@ -1532,7 +1561,7 @@ struct DatePickerPopover: View {
             HStack(spacing: 8) {
                 Text("repeat")
                     .font(.custom("Switzer-Regular", size: 12))
-                    .foregroundStyle(Color.white.opacity(0.6))
+                    .foregroundStyle(Color.fg.opacity(0.6))
 
                 Picker("", selection: $selectedRecurring) {
                     Text("none").tag(Idea.RecurringPattern?.none)
@@ -1553,7 +1582,7 @@ struct DatePickerPopover: View {
                     dismiss()
                 }
                 .font(.custom("Switzer-Regular", size: 12))
-                .foregroundStyle(Color.white.opacity(0.4))
+                .foregroundStyle(Color.fg.opacity(0.4))
                 .buttonStyle(.plain)
 
                 Spacer()
