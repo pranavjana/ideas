@@ -30,7 +30,7 @@ struct FocusView: View {
                 ScrollView {
                     VStack(spacing: 0) {
                         welcomeHeader(vm: vm)
-                            .padding(.top, 60)
+                            .padding(.top, 40)
                             .padding(.bottom, 32)
 
                         if !vm.messages.isEmpty {
@@ -48,9 +48,10 @@ struct FocusView: View {
                             .padding(.bottom, 16)
                         }
                     }
+                    .frame(maxWidth: .infinity)
                 }
                 .scrollDismissesKeyboard(.interactively)
-                .defaultScrollAnchor(.bottom)
+                .defaultScrollAnchor(vm.messages.isEmpty ? .top : .bottom)
                 .onChange(of: vm.messages.count) {
                     if let last = vm.messages.last {
                         withAnimation(.easeOut(duration: 0.2)) {
