@@ -17,7 +17,7 @@
 
 ---
 
-## ✨ Features
+## Features
 
 - **Graph View** — see all your ideas as a visual, interconnected map
 - **AI Chat** — talk to any idea and let AI help you expand, refine, or break it down
@@ -25,7 +25,7 @@
 - **Folders & Filters** — organize with tags, priorities, and custom folders
 - **Auto-Updates** — install once, get updates automatically
 
-## 📥 Install
+## Install
 
 1. Download the latest `.dmg` from [Releases](https://github.com/pranavjana/ideas/releases/latest)
 2. Open the DMG and drag **ideas** to Applications
@@ -34,12 +34,6 @@
    - Scroll down and click **Open Anyway**
    - Click **Open** in the confirmation dialog
 4. You only need to do this once — future launches work normally
-
-## 🛠 Built With
-
-- SwiftUI + SwiftData
-- OpenAI API
-- Sparkle (auto-updates)
 
 ---
 
