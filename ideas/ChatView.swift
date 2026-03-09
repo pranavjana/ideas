@@ -29,7 +29,7 @@ struct ChatView: View {
     var body: some View {
         #if os(macOS)
         chatContent
-            .background(Color(red: 0.09, green: 0.09, blue: 0.09))
+            .background(Color.bgBase)
             .onAppear {
                 if chatViewModel == nil {
                     let vm = ChatViewModel(modelContext: modelContext)
@@ -40,7 +40,7 @@ struct ChatView: View {
             }
         #else
         ZStack {
-            Color(red: 0.09, green: 0.09, blue: 0.09)
+            Color.bgBase
                 .ignoresSafeArea()
 
             chatContent
@@ -131,7 +131,7 @@ struct ChatView: View {
                         .frame(width: 12, height: 12)
                     Text(activity)
                         .font(.custom("Switzer-Light", size: 11))
-                        .foregroundStyle(Color.white.opacity(0.3))
+                        .foregroundStyle(Color.fg.opacity(0.3))
                 }
                 .padding(.horizontal, 16)
                 .padding(.bottom, 4)
@@ -174,14 +174,14 @@ struct ChatView: View {
                 HStack(spacing: 4) {
                     Text(selectedModel.name)
                         .font(.custom("Switzer-Regular", size: 11))
-                        .foregroundStyle(Color.white.opacity(0.4))
+                        .foregroundStyle(Color.fg.opacity(0.4))
                     Image(systemName: "chevron.down")
                         .font(.system(size: 8))
-                        .foregroundStyle(Color.white.opacity(0.3))
+                        .foregroundStyle(Color.fg.opacity(0.3))
                 }
                 .padding(.horizontal, 10)
                 .padding(.vertical, 5)
-                .background(Color.white.opacity(0.04))
+                .background(Color.fg.opacity(0.04))
                 .clipShape(RoundedRectangle(cornerRadius: 6))
             }
             .buttonStyle(.plain)
@@ -208,7 +208,7 @@ struct ChatView: View {
                     } label: {
                         Image(systemName: "xmark.circle.fill")
                             .font(.system(size: 14))
-                            .foregroundStyle(Color.white.opacity(0.4))
+                            .foregroundStyle(Color.fg.opacity(0.4))
                     }
                     .buttonStyle(.plain)
 
@@ -233,7 +233,7 @@ struct ChatView: View {
                 } label: {
                     Image(systemName: "photo")
                         .font(.system(size: 14))
-                        .foregroundStyle(Color.white.opacity(selectedImageData != nil ? 0.7 : 0.25))
+                        .foregroundStyle(Color.fg.opacity(selectedImageData != nil ? 0.7 : 0.25))
                 }
                 .buttonStyle(.plain)
                 #endif
@@ -241,7 +241,7 @@ struct ChatView: View {
                 TextField("ask about your ideas...", text: $inputText)
                     .textFieldStyle(.plain)
                     .font(.custom("Switzer-Regular", size: 15))
-                    .foregroundStyle(Color.white.opacity(0.9))
+                    .foregroundStyle(Color.fg.opacity(0.9))
                     .focused($isInputFocused)
                     .onSubmit { sendMessage() }
                     .disabled(chatViewModel?.isStreaming ?? false)
@@ -286,10 +286,10 @@ struct ChatView: View {
             Spacer()
             Text("chat")
                 .font(.custom("Switzer-Medium", size: 16))
-                .foregroundStyle(Color.white.opacity(0.2))
+                .foregroundStyle(Color.fg.opacity(0.2))
             Text("ask anything about your ideas")
                 .font(.custom("Switzer-Light", size: 12))
-                .foregroundStyle(Color.white.opacity(0.1))
+                .foregroundStyle(Color.fg.opacity(0.1))
             Spacer()
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)

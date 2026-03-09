@@ -21,7 +21,7 @@ struct ChatBubble: View {
         VStack(alignment: .trailing, spacing: 4) {
             Text("you")
                 .font(.custom("Switzer-Medium", size: 10))
-                .foregroundStyle(Color.white.opacity(0.2))
+                .foregroundStyle(Color.fg.opacity(0.2))
                 .textCase(.uppercase)
                 .tracking(1.5)
 
@@ -47,18 +47,18 @@ struct ChatBubble: View {
             if !message.content.isEmpty {
                 Text(message.content)
                     .font(.custom("Switzer-Regular", size: 14))
-                    .foregroundStyle(Color.white.opacity(0.85))
+                    .foregroundStyle(Color.fg.opacity(0.85))
                     .lineSpacing(4)
                     .textSelection(.enabled)
                     .padding(.horizontal, 14)
                     .padding(.vertical, 10)
-                    .background(Color.white.opacity(0.08))
+                    .background(Color.fg.opacity(0.08))
                     .clipShape(RoundedRectangle(cornerRadius: 8))
             }
 
             Text(message.timestamp.formatted(.dateTime.hour().minute()))
                 .font(.custom("Switzer-Light", size: 10))
-                .foregroundStyle(Color.white.opacity(0.15))
+                .foregroundStyle(Color.fg.opacity(0.15))
         }
         .frame(maxWidth: .infinity, alignment: .trailing)
     }
@@ -78,37 +78,37 @@ struct ChatBubble: View {
             if !message.content.isEmpty {
                 Text("ai")
                     .font(.custom("Switzer-Medium", size: 10))
-                    .foregroundStyle(Color.white.opacity(0.2))
+                    .foregroundStyle(Color.fg.opacity(0.2))
                     .textCase(.uppercase)
                     .tracking(1.5)
 
                 StructuredText(markdown: message.content)
                     .font(.custom("Switzer-Regular", size: 14))
-                    .foregroundStyle(Color.white.opacity(0.7))
+                    .foregroundStyle(Color.fg.opacity(0.7))
                     .textual.textSelection(.enabled)
                     .padding(.horizontal, 14)
                     .padding(.vertical, 10)
                     .frame(maxWidth: .infinity, alignment: .leading)
-                    .background(Color.white.opacity(0.04))
+                    .background(Color.fg.opacity(0.04))
                     .clipShape(RoundedRectangle(cornerRadius: 8))
 
                 Text(message.timestamp.formatted(.dateTime.hour().minute()))
                     .font(.custom("Switzer-Light", size: 10))
-                    .foregroundStyle(Color.white.opacity(0.15))
+                    .foregroundStyle(Color.fg.opacity(0.15))
             } else if message.toolCalls == nil {
                 // Empty streaming placeholder
                 Text("ai")
                     .font(.custom("Switzer-Medium", size: 10))
-                    .foregroundStyle(Color.white.opacity(0.2))
+                    .foregroundStyle(Color.fg.opacity(0.2))
                     .textCase(.uppercase)
                     .tracking(1.5)
 
                 Text("...")
                     .font(.custom("Switzer-Regular", size: 14))
-                    .foregroundStyle(Color.white.opacity(0.3))
+                    .foregroundStyle(Color.fg.opacity(0.3))
                     .padding(.horizontal, 14)
                     .padding(.vertical, 10)
-                    .background(Color.white.opacity(0.04))
+                    .background(Color.fg.opacity(0.04))
                     .clipShape(RoundedRectangle(cornerRadius: 8))
             }
         }
@@ -127,12 +127,12 @@ struct ChatBubble: View {
 
                     Text(status.message)
                         .font(.custom("Switzer-Light", size: 11))
-                        .foregroundStyle(Color.white.opacity(0.35))
+                        .foregroundStyle(Color.fg.opacity(0.35))
                         .lineLimit(1)
                 }
                 .padding(.horizontal, 12)
                 .padding(.vertical, 6)
-                .background(Color.white.opacity(0.02))
+                .background(Color.fg.opacity(0.02))
                 .clipShape(RoundedRectangle(cornerRadius: 6))
                 .frame(maxWidth: .infinity, alignment: .leading)
             }
@@ -149,18 +149,18 @@ struct ToolCallCard: View {
         HStack(spacing: 8) {
             Image(systemName: toolCall.icon)
                 .font(.system(size: 11))
-                .foregroundStyle(Color.white.opacity(0.4))
+                .foregroundStyle(Color.fg.opacity(0.4))
                 .frame(width: 16)
 
             VStack(alignment: .leading, spacing: 2) {
                 Text(toolCall.displayName)
                     .font(.custom("Switzer-Medium", size: 11))
-                    .foregroundStyle(Color.white.opacity(0.45))
+                    .foregroundStyle(Color.fg.opacity(0.45))
 
                 if let summary = toolCall.summary {
                     Text(summary)
                         .font(.custom("Switzer-Light", size: 10))
-                        .foregroundStyle(Color.white.opacity(0.25))
+                        .foregroundStyle(Color.fg.opacity(0.25))
                         .lineLimit(1)
                 }
             }
@@ -169,11 +169,11 @@ struct ToolCallCard: View {
         }
         .padding(.horizontal, 12)
         .padding(.vertical, 8)
-        .background(Color.white.opacity(0.03))
+        .background(Color.fg.opacity(0.03))
         .clipShape(RoundedRectangle(cornerRadius: 6))
         .overlay(
             RoundedRectangle(cornerRadius: 6)
-                .strokeBorder(Color.white.opacity(0.06), lineWidth: 1)
+                .strokeBorder(Color.fg.opacity(0.06), lineWidth: 1)
         )
     }
 }

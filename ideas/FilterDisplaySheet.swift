@@ -141,7 +141,7 @@ struct FilterDisplaySheet: View {
             .padding(4)
             .background(
                 RoundedRectangle(cornerRadius: 10)
-                    .fill(Color.white.opacity(0.04))
+                    .fill(Color.fg.opacity(0.04))
             )
             .padding(.horizontal, 16)
             .padding(.top, 16)
@@ -159,7 +159,7 @@ struct FilterDisplaySheet: View {
         #if os(macOS)
         .frame(maxHeight: 520)
         #endif
-        .background(Color(red: 0.11, green: 0.11, blue: 0.11))
+        .background(Color.bgElevated)
     }
 
     private func tabButton(_ tab: Tab, icon: String) -> some View {
@@ -172,12 +172,12 @@ struct FilterDisplaySheet: View {
                 Text(tab.rawValue)
                     .font(.custom("Switzer-Medium", size: 13))
             }
-            .foregroundStyle(Color.white.opacity(selectedTab == tab ? 0.85 : 0.35))
+            .foregroundStyle(Color.fg.opacity(selectedTab == tab ? 0.85 : 0.35))
             .frame(maxWidth: .infinity)
             .padding(.vertical, 8)
             .background(
                 RoundedRectangle(cornerRadius: 8)
-                    .fill(Color.white.opacity(selectedTab == tab ? 0.08 : 0))
+                    .fill(Color.fg.opacity(selectedTab == tab ? 0.08 : 0))
             )
         }
         .buttonStyle(.plain)
@@ -196,7 +196,7 @@ struct FilterDisplaySheet: View {
                     } label: {
                         Text("clear all")
                             .font(.custom("Switzer-Regular", size: 11))
-                            .foregroundStyle(Color.white.opacity(0.4))
+                            .foregroundStyle(Color.fg.opacity(0.4))
                     }
                     .buttonStyle(.plain)
                 }
@@ -237,16 +237,16 @@ struct FilterDisplaySheet: View {
                                 Text(priority.label)
                                     .font(.custom("Switzer-Regular", size: 11))
                             }
-                            .foregroundStyle(isSelected ? priority.color : Color.white.opacity(0.4))
+                            .foregroundStyle(isSelected ? priority.color : Color.fg.opacity(0.4))
                             .padding(.horizontal, 10)
                             .padding(.vertical, 5)
                             .background(
                                 Capsule()
-                                    .fill(isSelected ? priority.color.opacity(0.15) : Color.white.opacity(0.04))
+                                    .fill(isSelected ? priority.color.opacity(0.15) : Color.fg.opacity(0.04))
                             )
                             .overlay(
                                 Capsule()
-                                    .strokeBorder(isSelected ? priority.color.opacity(0.3) : Color.white.opacity(0.06), lineWidth: 1)
+                                    .strokeBorder(isSelected ? priority.color.opacity(0.3) : Color.fg.opacity(0.06), lineWidth: 1)
                             )
                         }
                         .buttonStyle(.plain)
@@ -266,16 +266,16 @@ struct FilterDisplaySheet: View {
                         } label: {
                             Text(option.rawValue)
                                 .font(.custom("Switzer-Regular", size: 11))
-                                .foregroundStyle(Color.white.opacity(isSelected ? 0.85 : 0.4))
+                                .foregroundStyle(Color.fg.opacity(isSelected ? 0.85 : 0.4))
                                 .padding(.horizontal, 10)
                                 .padding(.vertical, 5)
                                 .background(
                                     Capsule()
-                                        .fill(Color.white.opacity(isSelected ? 0.1 : 0.04))
+                                        .fill(Color.fg.opacity(isSelected ? 0.1 : 0.04))
                                 )
                                 .overlay(
                                     Capsule()
-                                        .strokeBorder(Color.white.opacity(isSelected ? 0.2 : 0.06), lineWidth: 1)
+                                        .strokeBorder(Color.fg.opacity(isSelected ? 0.2 : 0.06), lineWidth: 1)
                                 )
                         }
                         .buttonStyle(.plain)
@@ -300,16 +300,16 @@ struct FilterDisplaySheet: View {
                             } label: {
                                 Text(tag)
                                     .font(.custom("Switzer-Regular", size: 11))
-                                    .foregroundStyle(Color.white.opacity(isSelected ? 0.85 : 0.4))
+                                    .foregroundStyle(Color.fg.opacity(isSelected ? 0.85 : 0.4))
                                     .padding(.horizontal, 10)
                                     .padding(.vertical, 5)
                                     .background(
                                         Capsule()
-                                            .fill(Color.white.opacity(isSelected ? 0.1 : 0.04))
+                                            .fill(Color.fg.opacity(isSelected ? 0.1 : 0.04))
                                     )
                                     .overlay(
                                         Capsule()
-                                            .strokeBorder(Color.white.opacity(isSelected ? 0.2 : 0.06), lineWidth: 1)
+                                            .strokeBorder(Color.fg.opacity(isSelected ? 0.2 : 0.06), lineWidth: 1)
                                     )
                             }
                             .buttonStyle(.plain)
@@ -335,16 +335,16 @@ struct FilterDisplaySheet: View {
                             } label: {
                                 Text(cat)
                                     .font(.custom("Switzer-Regular", size: 11))
-                                    .foregroundStyle(Color.white.opacity(isSelected ? 0.85 : 0.4))
+                                    .foregroundStyle(Color.fg.opacity(isSelected ? 0.85 : 0.4))
                                     .padding(.horizontal, 10)
                                     .padding(.vertical, 5)
                                     .background(
                                         Capsule()
-                                            .fill(Color.white.opacity(isSelected ? 0.1 : 0.04))
+                                            .fill(Color.fg.opacity(isSelected ? 0.1 : 0.04))
                                     )
                                     .overlay(
                                         Capsule()
-                                            .strokeBorder(Color.white.opacity(isSelected ? 0.2 : 0.06), lineWidth: 1)
+                                            .strokeBorder(Color.fg.opacity(isSelected ? 0.2 : 0.06), lineWidth: 1)
                                     )
                             }
                             .buttonStyle(.plain)
@@ -397,18 +397,18 @@ struct FilterDisplaySheet: View {
                 if !isAllOption {
                     Image(systemName: folder?.icon ?? "folder")
                         .font(.system(size: 10))
-                        .foregroundStyle((folder?.color ?? .white).opacity(0.6))
+                        .foregroundStyle((folder?.color ?? .fg).opacity(0.6))
                 }
                 Text(label)
                     .font(.custom("Switzer-Regular", size: 12))
-                    .foregroundStyle(Color.white.opacity(actuallySelected ? 0.85 : 0.4))
+                    .foregroundStyle(Color.fg.opacity(actuallySelected ? 0.85 : 0.4))
 
                 Spacer()
 
                 if actuallySelected {
                     Image(systemName: "checkmark")
                         .font(.system(size: 10, weight: .medium))
-                        .foregroundStyle(Color.white.opacity(0.6))
+                        .foregroundStyle(Color.fg.opacity(0.6))
                 }
             }
             .padding(.leading, CGFloat(depth) * 16 + (isAllOption ? 0 : 0))
@@ -416,7 +416,7 @@ struct FilterDisplaySheet: View {
             .padding(.vertical, 6)
             .background(
                 RoundedRectangle(cornerRadius: 6)
-                    .fill(Color.white.opacity(actuallySelected ? 0.06 : 0))
+                    .fill(Color.fg.opacity(actuallySelected ? 0.06 : 0))
             )
             .contentShape(Rectangle())
         }
@@ -446,16 +446,16 @@ struct FilterDisplaySheet: View {
                             } label: {
                                 Text(option.label)
                                     .font(.custom("Switzer-Regular", size: 11))
-                                    .foregroundStyle(Color.white.opacity(isSelected ? 0.85 : 0.4))
+                                    .foregroundStyle(Color.fg.opacity(isSelected ? 0.85 : 0.4))
                                     .padding(.horizontal, 10)
                                     .padding(.vertical, 5)
                                     .background(
                                         Capsule()
-                                            .fill(Color.white.opacity(isSelected ? 0.1 : 0.04))
+                                            .fill(Color.fg.opacity(isSelected ? 0.1 : 0.04))
                                     )
                                     .overlay(
                                         Capsule()
-                                            .strokeBorder(Color.white.opacity(isSelected ? 0.2 : 0.06), lineWidth: 1)
+                                            .strokeBorder(Color.fg.opacity(isSelected ? 0.2 : 0.06), lineWidth: 1)
                                     )
                             }
                             .buttonStyle(.plain)
@@ -474,16 +474,16 @@ struct FilterDisplaySheet: View {
                         } label: {
                             Text(option.label)
                                 .font(.custom("Switzer-Regular", size: 11))
-                                .foregroundStyle(Color.white.opacity(isSelected ? 0.85 : 0.4))
+                                .foregroundStyle(Color.fg.opacity(isSelected ? 0.85 : 0.4))
                                 .padding(.horizontal, 10)
                                 .padding(.vertical, 5)
                                 .background(
                                     Capsule()
-                                        .fill(Color.white.opacity(isSelected ? 0.1 : 0.04))
+                                        .fill(Color.fg.opacity(isSelected ? 0.1 : 0.04))
                                 )
                                 .overlay(
                                     Capsule()
-                                        .strokeBorder(Color.white.opacity(isSelected ? 0.2 : 0.06), lineWidth: 1)
+                                        .strokeBorder(Color.fg.opacity(isSelected ? 0.2 : 0.06), lineWidth: 1)
                                 )
                         }
                         .buttonStyle(.plain)
@@ -505,16 +505,16 @@ struct FilterDisplaySheet: View {
                 Text(label)
                     .font(.custom("Switzer-Medium", size: 11))
             }
-            .foregroundStyle(Color.white.opacity(ideasLayout == layout ? 0.85 : 0.35))
+            .foregroundStyle(Color.fg.opacity(ideasLayout == layout ? 0.85 : 0.35))
             .frame(maxWidth: .infinity)
             .padding(.vertical, 10)
             .background(
                 RoundedRectangle(cornerRadius: 8)
-                    .fill(Color.white.opacity(ideasLayout == layout ? 0.08 : 0.03))
+                    .fill(Color.fg.opacity(ideasLayout == layout ? 0.08 : 0.03))
             )
             .overlay(
                 RoundedRectangle(cornerRadius: 8)
-                    .strokeBorder(Color.white.opacity(ideasLayout == layout ? 0.15 : 0.04), lineWidth: 1)
+                    .strokeBorder(Color.fg.opacity(ideasLayout == layout ? 0.15 : 0.04), lineWidth: 1)
             )
         }
         .buttonStyle(.plain)
@@ -527,10 +527,10 @@ struct FilterDisplaySheet: View {
             HStack(spacing: 6) {
                 Image(systemName: icon)
                     .font(.system(size: 10))
-                    .foregroundStyle(Color.white.opacity(0.3))
+                    .foregroundStyle(Color.fg.opacity(0.3))
                 Text(title)
                     .font(.custom("Switzer-Medium", size: 12))
-                    .foregroundStyle(Color.white.opacity(0.5))
+                    .foregroundStyle(Color.fg.opacity(0.5))
             }
             content()
         }
@@ -542,16 +542,16 @@ struct FilterDisplaySheet: View {
         } label: {
             Text(label)
                 .font(.custom("Switzer-Regular", size: 11))
-                .foregroundStyle(Color.white.opacity(isActive ? 0.85 : 0.4))
+                .foregroundStyle(Color.fg.opacity(isActive ? 0.85 : 0.4))
                 .padding(.horizontal, 12)
                 .padding(.vertical, 5)
                 .background(
                     Capsule()
-                        .fill(Color.white.opacity(isActive ? 0.1 : 0.04))
+                        .fill(Color.fg.opacity(isActive ? 0.1 : 0.04))
                 )
                 .overlay(
                     Capsule()
-                        .strokeBorder(Color.white.opacity(isActive ? 0.2 : 0.06), lineWidth: 1)
+                        .strokeBorder(Color.fg.opacity(isActive ? 0.2 : 0.06), lineWidth: 1)
                 )
         }
         .buttonStyle(.plain)

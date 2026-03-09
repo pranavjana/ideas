@@ -73,7 +73,7 @@ class Idea {
     func accentColor(from tagColors: [String: String]) -> Color? {
         guard let firstTag = tags.first,
               let hex = tagColors[firstTag], !hex.isEmpty else { return nil }
-        return Color(hex: hex)
+        return Color.accent(hex: hex)
     }
 
     var allLinks: [Idea] {
@@ -172,7 +172,7 @@ class Idea {
 
         var color: Color {
             switch self {
-            case .none: return .white.opacity(0.2)
+            case .none: return .fg.opacity(0.2)
             case .urgent: return Color(red: 1.0, green: 0.3, blue: 0.3)
             case .high: return Color(red: 1.0, green: 0.55, blue: 0.2)
             case .medium: return Color(red: 1.0, green: 0.8, blue: 0.3)
@@ -315,8 +315,8 @@ extension Idea {
 extension Idea.DueStatus {
     var color: Color {
         switch self {
-        case .none: return .white.opacity(0.2)
-        case .future: return .white.opacity(0.5)
+        case .none: return .fg.opacity(0.2)
+        case .future: return .fg.opacity(0.5)
         case .today: return Color(red: 0.4, green: 0.7, blue: 1.0)
         case .upcoming: return Color(red: 1.0, green: 0.75, blue: 0.3)
         case .overdue: return Color(red: 1.0, green: 0.4, blue: 0.4)

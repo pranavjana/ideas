@@ -15,19 +15,19 @@ struct NodeView: View {
             Text(idea.text)
                 .font(.custom("Switzer-Regular", size: 12))
                 .foregroundStyle(accent?.opacity(isSelected ? 1.0 : 0.85)
-                    ?? Color.white.opacity(isSelected ? 1.0 : 0.85))
+                    ?? Color.fg.opacity(isSelected ? 1.0 : 0.85))
                 .lineLimit(3)
 
             if !idea.tags.isEmpty {
                 HStack(spacing: 4) {
                     ForEach(idea.tags, id: \.self) { tag in
-                        let tagColor = tagColors[tag].flatMap { Color(hex: $0) }
+                        let tagColor = tagColors[tag].flatMap { Color.accent(hex: $0) }
                         Text(tag)
                             .font(.custom("Switzer-Light", size: 9))
-                            .foregroundStyle((tagColor ?? .white).opacity(0.5))
+                            .foregroundStyle((tagColor ?? .fg).opacity(0.5))
                             .padding(.horizontal, 5)
                             .padding(.vertical, 2)
-                            .background((tagColor ?? .white).opacity(0.08))
+                            .background((tagColor ?? .fg).opacity(0.08))
                             .clipShape(Capsule())
                     }
                 }
@@ -38,11 +38,11 @@ struct NodeView: View {
             if linkCount > 0 {
                 HStack(spacing: 3) {
                     Circle()
-                        .fill((accent ?? .white).opacity(isSelected ? 0.5 : 0.25))
+                        .fill((accent ?? .fg).opacity(isSelected ? 0.5 : 0.25))
                         .frame(width: 5, height: 5)
                     Text("\(linkCount) link\(linkCount == 1 ? "" : "s")")
                         .font(.custom("Switzer-Light", size: 9))
-                        .foregroundStyle((accent ?? .white).opacity(0.25))
+                        .foregroundStyle((accent ?? .fg).opacity(0.25))
                 }
             }
 
@@ -61,8 +61,8 @@ struct NodeView: View {
         .frame(maxWidth: 200)
         .background(
             RoundedRectangle(cornerRadius: 10)
-                .fill((accent ?? .white).opacity(isSelected ? 0.1 : 0.05))
-                .stroke((accent ?? .white).opacity(isSelected ? 0.4 : 0.12), lineWidth: isSelected ? 1.5 : 1)
+                .fill((accent ?? .fg).opacity(isSelected ? 0.1 : 0.05))
+                .stroke((accent ?? .fg).opacity(isSelected ? 0.4 : 0.12), lineWidth: isSelected ? 1.5 : 1)
         )
     }
 }

@@ -22,7 +22,7 @@ class UserProfile {
 
     func color(for tag: String) -> Color? {
         guard let hex = tagColors[tag], !hex.isEmpty else { return nil }
-        return Color(hex: hex)
+        return Color.accent(hex: hex)
     }
 
     func setColor(_ color: Color?, for tag: String) {

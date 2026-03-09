@@ -55,7 +55,7 @@ struct IdeaChatView: View {
                         .frame(width: 12, height: 12)
                     Text(activity)
                         .font(.custom("Switzer-Light", size: 11))
-                        .foregroundStyle(Color.white.opacity(0.3))
+                        .foregroundStyle(Color.fg.opacity(0.3))
                 }
                 .frame(maxWidth: .infinity, alignment: .leading)
                 .padding(.bottom, 4)
@@ -91,7 +91,7 @@ struct IdeaChatView: View {
                 .scaleEffect(0.6)
             Text("thinking about this idea...")
                 .font(.custom("Switzer-Light", size: 12))
-                .foregroundStyle(Color.white.opacity(0.15))
+                .foregroundStyle(Color.fg.opacity(0.15))
             Spacer()
         }
         .frame(maxWidth: .infinity, minHeight: 200)
@@ -116,13 +116,13 @@ struct IdeaChatView: View {
                 } label: {
                     Text(reply)
                         .font(.custom("Switzer-Regular", size: 12))
-                        .foregroundStyle(Color.white.opacity(0.6))
+                        .foregroundStyle(Color.fg.opacity(0.6))
                         .padding(.horizontal, 12)
                         .padding(.vertical, 7)
                         .background(
                             RoundedRectangle(cornerRadius: 16)
-                                .fill(Color.white.opacity(0.04))
-                                .stroke(Color.white.opacity(0.08), lineWidth: 1)
+                                .fill(Color.fg.opacity(0.04))
+                                .stroke(Color.fg.opacity(0.08), lineWidth: 1)
                         )
                 }
                 .buttonStyle(.plain)
@@ -160,9 +160,9 @@ struct IdeaChatView: View {
             } label: {
                 Image(systemName: "sparkle")
                     .font(.system(size: 12))
-                    .foregroundStyle(Color.white.opacity(0.25))
+                    .foregroundStyle(Color.fg.opacity(0.25))
                     .frame(width: 28, height: 28)
-                    .background(Color.white.opacity(0.04))
+                    .background(Color.fg.opacity(0.04))
                     .clipShape(RoundedRectangle(cornerRadius: 6))
             }
             .buttonStyle(.plain)
@@ -170,7 +170,7 @@ struct IdeaChatView: View {
             TextField("think together...", text: $inputText, axis: .vertical)
                 .textFieldStyle(.plain)
                 .font(.custom("Switzer-Regular", size: 14))
-                .foregroundStyle(Color.white.opacity(0.85))
+                .foregroundStyle(Color.fg.opacity(0.85))
                 .lineLimit(1...5)
                 .focused($isInputFocused)
                 .onSubmit { send() }
@@ -184,7 +184,7 @@ struct IdeaChatView: View {
                 Button { send() } label: {
                     Image(systemName: "arrow.up.circle.fill")
                         .font(.system(size: 20))
-                        .foregroundStyle(Color.white.opacity(0.5))
+                        .foregroundStyle(Color.fg.opacity(0.5))
                 }
                 .buttonStyle(.plain)
             }
@@ -193,8 +193,8 @@ struct IdeaChatView: View {
         .padding(.vertical, 8)
         .background(
             RoundedRectangle(cornerRadius: 10)
-                .fill(Color.white.opacity(0.03))
-                .stroke(Color.white.opacity(0.06), lineWidth: 1)
+                .fill(Color.fg.opacity(0.03))
+                .stroke(Color.fg.opacity(0.06), lineWidth: 1)
         )
     }
 
@@ -207,12 +207,12 @@ struct IdeaChatView: View {
                 Spacer()
                 Text(message.content)
                     .font(.custom("Switzer-Regular", size: 14))
-                    .foregroundStyle(Color.white.opacity(0.9))
+                    .foregroundStyle(Color.fg.opacity(0.9))
                     .padding(.horizontal, 14)
                     .padding(.vertical, 10)
                     .background(
                         RoundedRectangle(cornerRadius: 14)
-                            .fill(Color.white.opacity(0.08))
+                            .fill(Color.fg.opacity(0.08))
                     )
                     .textSelection(.enabled)
             }
@@ -222,7 +222,7 @@ struct IdeaChatView: View {
                     if !message.content.isEmpty {
                         Text(LocalizedStringKey(message.content))
                             .font(.custom("Switzer-Regular", size: 14))
-                            .foregroundStyle(Color.white.opacity(0.75))
+                            .foregroundStyle(Color.fg.opacity(0.75))
                             .lineSpacing(5)
                             .textSelection(.enabled)
                             .padding(.bottom, 4)
@@ -231,17 +231,17 @@ struct IdeaChatView: View {
                         HStack(spacing: 5) {
                             Image(systemName: "gearshape")
                                 .font(.system(size: 9))
-                                .foregroundStyle(Color.white.opacity(0.2))
+                                .foregroundStyle(Color.fg.opacity(0.2))
                             Text(tc.displayName)
                                 .font(.custom("Switzer-Light", size: 11))
-                                .foregroundStyle(Color.white.opacity(0.25))
+                                .foregroundStyle(Color.fg.opacity(0.25))
                         }
                     }
                 }
             } else if !message.content.isEmpty {
                 Text(LocalizedStringKey(message.content))
                     .font(.custom("Switzer-Regular", size: 14))
-                    .foregroundStyle(Color.white.opacity(0.75))
+                    .foregroundStyle(Color.fg.opacity(0.75))
                     .lineSpacing(5)
                     .textSelection(.enabled)
             }

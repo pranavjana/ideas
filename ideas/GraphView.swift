@@ -23,7 +23,7 @@ struct GraphView: View {
                     }
                 }
         }
-        .background(Color(red: 0.09, green: 0.09, blue: 0.09))
+        .background(Color.bgBase)
     }
 
     // MARK: - Canvas
@@ -306,7 +306,7 @@ struct ConnectionLine: View {
 
             context.stroke(
                 path,
-                with: .color(.white.opacity(isHighlighted ? 0.5 : 0.15)),
+                with: .color(Color.fg.opacity(isHighlighted ? 0.5 : 0.15)),
                 lineWidth: isHighlighted ? 2 : 1
             )
         }

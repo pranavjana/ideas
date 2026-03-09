@@ -37,7 +37,7 @@ struct IdeaEditorPanel: View {
     @FocusState private var isEditorFocused: Bool
 
     private var accent: Color {
-        idea.accentColor(from: tagColors) ?? .white
+        idea.accentColor(from: tagColors) ?? .fg
     }
 
     var body: some View {
@@ -49,11 +49,11 @@ struct IdeaEditorPanel: View {
                     .padding(.horizontal, 16)
                     .padding(.bottom, 12)
                     .frame(width: geo.size.width * chatFraction, height: geo.size.height)
-                    .background(Color(red: 0.06, green: 0.06, blue: 0.06))
+                    .background(Color.bgDeep)
 
                 // Draggable divider
                 Rectangle()
-                    .fill(Color.white.opacity(isDividerHovering ? 0.15 : 0.05))
+                    .fill(Color.fg.opacity(isDividerHovering ? 0.15 : 0.05))
                     .frame(width: isDividerHovering ? 3 : 1)
                     .contentShape(Rectangle().inset(by: -3))
                     .onHover { hovering in
@@ -113,7 +113,7 @@ struct IdeaEditorPanel: View {
                     }
                 }
                 .frame(maxWidth: .infinity, maxHeight: .infinity)
-                .background(Color(red: 0.08, green: 0.08, blue: 0.08))
+                .background(Color.bgPanel)
             }
         }
         .frame(maxHeight: .infinity)
@@ -137,7 +137,7 @@ struct IdeaEditorPanel: View {
 
     private var divider: some View {
         Rectangle()
-            .fill(Color.white.opacity(0.05))
+            .fill(Color.fg.opacity(0.05))
             .frame(height: 1)
     }
 
@@ -152,10 +152,10 @@ struct IdeaEditorPanel: View {
                     Text("back")
                         .font(.custom("Switzer-Medium", size: 12))
                 }
-                .foregroundStyle(Color.white.opacity(0.35))
+                .foregroundStyle(Color.fg.opacity(0.35))
                 .padding(.horizontal, 10)
                 .padding(.vertical, 6)
-                .background(Color.white.opacity(0.05))
+                .background(Color.fg.opacity(0.05))
                 .clipShape(RoundedRectangle(cornerRadius: 6))
             }
             .buttonStyle(.plain)
@@ -171,13 +171,13 @@ struct IdeaEditorPanel: View {
                     Text(idea.isDone ? "done" : "to do")
                         .font(.custom("Switzer-Medium", size: 11))
                 }
-                .foregroundStyle(idea.isDone ? Color.green.opacity(0.8) : Color.white.opacity(0.4))
+                .foregroundStyle(idea.isDone ? Color.green.opacity(0.8) : Color.fg.opacity(0.4))
                 .padding(.horizontal, 10)
                 .padding(.vertical, 5)
                 .background(
                     Capsule()
-                        .fill(idea.isDone ? Color.green.opacity(0.1) : Color.white.opacity(0.04))
-                        .stroke(idea.isDone ? Color.green.opacity(0.15) : Color.white.opacity(0.06), lineWidth: 1)
+                        .fill(idea.isDone ? Color.green.opacity(0.1) : Color.fg.opacity(0.04))
+                        .stroke(idea.isDone ? Color.green.opacity(0.15) : Color.fg.opacity(0.06), lineWidth: 1)
                 )
             }
             .buttonStyle(.plain)
@@ -193,7 +193,7 @@ struct IdeaEditorPanel: View {
             if editingTitle {
                 TextField("untitled", text: $titleText, axis: .vertical)
                     .font(.custom("Gambarino-Regular", size: 26))
-                    .foregroundStyle(Color.white.opacity(0.9))
+                    .foregroundStyle(Color.fg.opacity(0.9))
                     .textFieldStyle(.plain)
                     .focused($isTitleFocused)
                     .onSubmit {
@@ -209,7 +209,7 @@ struct IdeaEditorPanel: View {
             } else {
                 Text(idea.text)
                     .font(.custom("Gambarino-Regular", size: 26))
-                    .foregroundStyle(Color.white.opacity(0.9))
+                    .foregroundStyle(Color.fg.opacity(0.9))
                     .lineSpacing(4)
                     .frame(maxWidth: .infinity, alignment: .leading)
                     .contentShape(Rectangle())
@@ -222,7 +222,7 @@ struct IdeaEditorPanel: View {
 
             Text(idea.createdAt.formatted(.dateTime.month(.wide).day().year()))
                 .font(.custom("Switzer-Light", size: 12))
-                .foregroundStyle(Color.white.opacity(0.2))
+                .foregroundStyle(Color.fg.opacity(0.2))
         }
     }
 
@@ -237,7 +237,7 @@ struct IdeaEditorPanel: View {
                         .frame(width: 7, height: 7)
                     Text(idea.isDone ? "Done" : "In Progress")
                         .font(.custom("Switzer-Regular", size: 13))
-                        .foregroundStyle(Color.white.opacity(0.7))
+                        .foregroundStyle(Color.fg.opacity(0.7))
                 }
             }
 
@@ -255,7 +255,7 @@ struct IdeaEditorPanel: View {
                 } else {
                     Text("None")
                         .font(.custom("Switzer-Regular", size: 13))
-                        .foregroundStyle(Color.white.opacity(0.2))
+                        .foregroundStyle(Color.fg.opacity(0.2))
                         .contentShape(Rectangle())
                         .onTapGesture { cyclePriority() }
                 }
@@ -284,7 +284,7 @@ struct IdeaEditorPanel: View {
                     } else {
                         Text("Empty")
                             .font(.custom("Switzer-Regular", size: 13))
-                            .foregroundStyle(Color.white.opacity(0.2))
+                            .foregroundStyle(Color.fg.opacity(0.2))
                     }
                 }
                 .buttonStyle(.plain)
@@ -297,11 +297,11 @@ struct IdeaEditorPanel: View {
                 if !idea.category.isEmpty {
                     Text(idea.category)
                         .font(.custom("Switzer-Regular", size: 13))
-                        .foregroundStyle(Color.white.opacity(0.7))
+                        .foregroundStyle(Color.fg.opacity(0.7))
                 } else {
                     Text("Empty")
                         .font(.custom("Switzer-Regular", size: 13))
-                        .foregroundStyle(Color.white.opacity(0.2))
+                        .foregroundStyle(Color.fg.opacity(0.2))
                 }
             }
 
@@ -312,20 +312,20 @@ struct IdeaEditorPanel: View {
                 if !visibleTags.isEmpty {
                     HStack(spacing: 5) {
                         ForEach(visibleTags, id: \.self) { tag in
-                            let tagColor = tagColors[tag].flatMap { Color(hex: $0) }
+                            let tagColor = tagColors[tag].flatMap { Color.accent(hex: $0) }
                             Text(tag)
                                 .font(.custom("Switzer-Regular", size: 11))
-                                .foregroundStyle((tagColor ?? .white).opacity(0.8))
+                                .foregroundStyle((tagColor ?? .fg).opacity(0.8))
                                 .padding(.horizontal, 8)
                                 .padding(.vertical, 3)
-                                .background((tagColor ?? .white).opacity(0.1))
+                                .background((tagColor ?? .fg).opacity(0.1))
                                 .clipShape(Capsule())
                         }
                     }
                 } else {
                     Text("Empty")
                         .font(.custom("Switzer-Regular", size: 13))
-                        .foregroundStyle(Color.white.opacity(0.2))
+                        .foregroundStyle(Color.fg.opacity(0.2))
                 }
             }
 
@@ -333,7 +333,7 @@ struct IdeaEditorPanel: View {
             propertyRow(icon: "link", label: "Links") {
                 Text(linkCount > 0 ? "\(linkCount) connection\(linkCount == 1 ? "" : "s")" : "Empty")
                     .font(.custom("Switzer-Regular", size: 13))
-                    .foregroundStyle(Color.white.opacity(linkCount > 0 ? 0.7 : 0.2))
+                    .foregroundStyle(Color.fg.opacity(linkCount > 0 ? 0.7 : 0.2))
             }
         }
     }
@@ -343,11 +343,11 @@ struct IdeaEditorPanel: View {
             HStack(spacing: 6) {
                 Image(systemName: icon)
                     .font(.system(size: 11))
-                    .foregroundStyle(Color.white.opacity(0.2))
+                    .foregroundStyle(Color.fg.opacity(0.2))
                     .frame(width: 16)
                 Text(label)
                     .font(.custom("Switzer-Regular", size: 13))
-                    .foregroundStyle(Color.white.opacity(0.35))
+                    .foregroundStyle(Color.fg.opacity(0.35))
             }
             .frame(width: 120, alignment: .leading)
 
@@ -377,7 +377,7 @@ struct IdeaEditorPanel: View {
                 // Editing mode: plain text
                 TextEditor(text: $plainNotes)
                     .font(.custom("Switzer-Regular", size: 15))
-                    .foregroundStyle(Color.white.opacity(0.8))
+                    .foregroundStyle(Color.fg.opacity(0.8))
                     .scrollContentBackground(.hidden)
                     .focused($isEditorFocused)
                     .frame(minHeight: 300)
@@ -390,7 +390,7 @@ struct IdeaEditorPanel: View {
                 if plainNotes.isEmpty {
                     Text("tap to edit notes...")
                         .font(.custom("Switzer-Regular", size: 15))
-                        .foregroundStyle(Color.white.opacity(0.12))
+                        .foregroundStyle(Color.fg.opacity(0.12))
                         .frame(maxWidth: .infinity, minHeight: 300, alignment: .topLeading)
                         .contentShape(Rectangle())
                         .onTapGesture { isEditorFocused = true }
@@ -411,15 +411,15 @@ struct IdeaEditorPanel: View {
             HStack(spacing: 8) {
                 Image(systemName: "checklist")
                     .font(.system(size: 12))
-                    .foregroundStyle(Color.white.opacity(0.25))
+                    .foregroundStyle(Color.fg.opacity(0.25))
                 Text("Subtasks")
                     .font(.custom("Switzer-Medium", size: 13))
-                    .foregroundStyle(Color.white.opacity(0.4))
+                    .foregroundStyle(Color.fg.opacity(0.4))
                 if !idea.subtasks.isEmpty {
                     let progress = idea.subtaskProgress
                     Text("\(progress.done)/\(progress.total)")
                         .font(.custom("Switzer-Light", size: 11))
-                        .foregroundStyle(Color.white.opacity(0.2))
+                        .foregroundStyle(Color.fg.opacity(0.2))
                 }
                 Spacer()
             }
@@ -440,8 +440,8 @@ struct IdeaEditorPanel: View {
 
                         Text(subtask.text)
                             .font(.custom("Switzer-Regular", size: 13))
-                            .foregroundStyle(Color.white.opacity(subtask.isDone ? 0.3 : 0.7))
-                            .strikethrough(subtask.isDone, color: Color.white.opacity(0.15))
+                            .foregroundStyle(Color.fg.opacity(subtask.isDone ? 0.3 : 0.7))
+                            .strikethrough(subtask.isDone, color: Color.fg.opacity(0.15))
 
                         Spacer()
 
@@ -452,7 +452,7 @@ struct IdeaEditorPanel: View {
                         } label: {
                             Image(systemName: "xmark")
                                 .font(.system(size: 8, weight: .bold))
-                                .foregroundStyle(Color.white.opacity(0.12))
+                                .foregroundStyle(Color.fg.opacity(0.12))
                                 .frame(width: 18, height: 18)
                         }
                         .buttonStyle(.plain)
@@ -461,19 +461,19 @@ struct IdeaEditorPanel: View {
                     .padding(.horizontal, 8)
                     .background(
                         RoundedRectangle(cornerRadius: 6)
-                            .fill(Color.white.opacity(0.02))
+                            .fill(Color.fg.opacity(0.02))
                     )
                 }
 
                 HStack(spacing: 8) {
                     Image(systemName: "plus")
                         .font(.system(size: 10))
-                        .foregroundStyle(Color.white.opacity(0.15))
+                        .foregroundStyle(Color.fg.opacity(0.15))
 
                     TextField("add subtask...", text: $newSubtaskText)
                         .textFieldStyle(.plain)
                         .font(.custom("Switzer-Regular", size: 13))
-                        .foregroundStyle(Color.white.opacity(0.6))
+                        .foregroundStyle(Color.fg.opacity(0.6))
                         .focused($isSubtaskFocused)
                         .onSubmit {
                             let trimmed = newSubtaskText.trimmingCharacters(in: .whitespaces)
@@ -501,10 +501,10 @@ struct IdeaEditorPanel: View {
                 HStack(spacing: 8) {
                     Image(systemName: "clock.arrow.circlepath")
                         .font(.system(size: 12))
-                        .foregroundStyle(Color.white.opacity(0.25))
+                        .foregroundStyle(Color.fg.opacity(0.25))
                     Text("Updates")
                         .font(.custom("Switzer-Medium", size: 13))
-                        .foregroundStyle(Color.white.opacity(0.4))
+                        .foregroundStyle(Color.fg.opacity(0.4))
                     Spacer()
                 }
 
@@ -519,11 +519,11 @@ struct IdeaEditorPanel: View {
                             VStack(alignment: .leading, spacing: 2) {
                                 Text(update.text)
                                     .font(.custom("Switzer-Regular", size: 13))
-                                    .foregroundStyle(Color.white.opacity(0.6))
+                                    .foregroundStyle(Color.fg.opacity(0.6))
                                     .lineSpacing(3)
                                 Text(update.date.formatted(.dateTime.month(.abbreviated).day().hour().minute()))
                                     .font(.custom("Switzer-Light", size: 10))
-                                    .foregroundStyle(Color.white.opacity(0.15))
+                                    .foregroundStyle(Color.fg.opacity(0.15))
                             }
                         }
                         .padding(.vertical, 8)
@@ -549,31 +549,31 @@ struct MarkdownNotesView: View {
                 } else if trimmed.hasPrefix("### ") {
                     Text(LocalizedStringKey(String(trimmed.dropFirst(4))))
                         .font(.custom("Switzer-Medium", size: 17))
-                        .foregroundStyle(Color.white.opacity(0.9))
+                        .foregroundStyle(Color.fg.opacity(0.9))
                 } else if trimmed.hasPrefix("## ") {
                     Text(LocalizedStringKey(String(trimmed.dropFirst(3))))
                         .font(.custom("Switzer-Medium", size: 20))
-                        .foregroundStyle(Color.white.opacity(0.9))
+                        .foregroundStyle(Color.fg.opacity(0.9))
                         .padding(.top, 4)
                 } else if trimmed.hasPrefix("# ") {
                     Text(LocalizedStringKey(String(trimmed.dropFirst(2))))
                         .font(.custom("Gambarino-Regular", size: 24))
-                        .foregroundStyle(Color.white.opacity(0.9))
+                        .foregroundStyle(Color.fg.opacity(0.9))
                         .padding(.top, 6)
                 } else if trimmed.hasPrefix("- ") {
                     HStack(alignment: .top, spacing: 8) {
                         Text("•")
                             .font(.custom("Switzer-Regular", size: 15))
-                            .foregroundStyle(Color.white.opacity(0.4))
+                            .foregroundStyle(Color.fg.opacity(0.4))
                         Text(LocalizedStringKey(String(trimmed.dropFirst(2))))
                             .font(.custom("Switzer-Regular", size: 15))
-                            .foregroundStyle(Color.white.opacity(0.75))
+                            .foregroundStyle(Color.fg.opacity(0.75))
                             .lineSpacing(5)
                     }
                 } else {
                     Text(LocalizedStringKey(trimmed))
                         .font(.custom("Switzer-Regular", size: 15))
-                        .foregroundStyle(Color.white.opacity(0.75))
+                        .foregroundStyle(Color.fg.opacity(0.75))
                         .lineSpacing(5)
                 }
             }
@@ -649,12 +649,12 @@ struct RichNotesEditor: View {
             if richText.characters.isEmpty && !isEditorFocused {
                 Text("Type / for commands...")
                     .font(.custom("Switzer-Regular", size: 15))
-                    .foregroundStyle(Color.white.opacity(0.12))
+                    .foregroundStyle(Color.fg.opacity(0.12))
                     .allowsHitTesting(false)
             }
 
             TextEditor(text: $richText, selection: $selection)
-                .foregroundStyle(Color.white.opacity(0.85))
+                .foregroundStyle(Color.fg.opacity(0.85))
                 .scrollContentBackground(.hidden)
                 .focused($isEditorFocused)
                 .frame(minHeight: 300)
@@ -736,7 +736,7 @@ struct RichNotesEditor: View {
         VStack(alignment: .leading, spacing: 0) {
             Text("Basic blocks")
                 .font(.custom("Switzer-Medium", size: 11))
-                .foregroundStyle(Color.white.opacity(0.3))
+                .foregroundStyle(Color.fg.opacity(0.3))
                 .padding(.horizontal, 14)
                 .padding(.top, 10)
                 .padding(.bottom, 6)
@@ -748,7 +748,7 @@ struct RichNotesEditor: View {
             if filteredCommands.isEmpty {
                 Text("No results")
                     .font(.custom("Switzer-Light", size: 13))
-                    .foregroundStyle(Color.white.opacity(0.2))
+                    .foregroundStyle(Color.fg.opacity(0.2))
                     .padding(.horizontal, 14)
                     .padding(.vertical, 8)
             }
@@ -757,8 +757,8 @@ struct RichNotesEditor: View {
         .frame(width: 250)
         .background(
             RoundedRectangle(cornerRadius: 10)
-                .fill(Color(red: 0.12, green: 0.12, blue: 0.12))
-                .stroke(Color.white.opacity(0.08), lineWidth: 1)
+                .fill(Color.bgCard)
+                .stroke(Color.fg.opacity(0.08), lineWidth: 1)
         )
         .shadow(color: .black.opacity(0.5), radius: 20, y: 8)
     }
@@ -770,28 +770,28 @@ struct RichNotesEditor: View {
             HStack(spacing: 10) {
                 Image(systemName: cmd.icon)
                     .font(.system(size: 13))
-                    .foregroundStyle(Color.white.opacity(isHighlighted ? 0.8 : 0.5))
+                    .foregroundStyle(Color.fg.opacity(isHighlighted ? 0.8 : 0.5))
                     .frame(width: 26, height: 26)
-                    .background(Color.white.opacity(isHighlighted ? 0.08 : 0.04))
+                    .background(Color.fg.opacity(isHighlighted ? 0.08 : 0.04))
                     .clipShape(RoundedRectangle(cornerRadius: 5))
 
                 Text(cmd.label)
                     .font(.custom("Switzer-Regular", size: 14))
-                    .foregroundStyle(Color.white.opacity(isHighlighted ? 1.0 : 0.7))
+                    .foregroundStyle(Color.fg.opacity(isHighlighted ? 1.0 : 0.7))
 
                 Spacer()
 
                 if !cmd.shortcut.isEmpty {
                     Text(cmd.shortcut)
                         .font(.custom("Switzer-Light", size: 12))
-                        .foregroundStyle(Color.white.opacity(0.2))
+                        .foregroundStyle(Color.fg.opacity(0.2))
                 }
             }
             .padding(.horizontal, 12)
             .padding(.vertical, 7)
             .background(
                 RoundedRectangle(cornerRadius: 6)
-                    .fill(Color.white.opacity(isHighlighted ? 0.06 : 0))
+                    .fill(Color.fg.opacity(isHighlighted ? 0.06 : 0))
             )
             .contentShape(Rectangle())
         }
@@ -829,11 +829,11 @@ struct FolderPropertyRow: View {
             HStack(spacing: 6) {
                 Image(systemName: "folder")
                     .font(.system(size: 11))
-                    .foregroundStyle(Color.white.opacity(0.2))
+                    .foregroundStyle(Color.fg.opacity(0.2))
                     .frame(width: 16)
                 Text("Folder")
                     .font(.custom("Switzer-Regular", size: 13))
-                    .foregroundStyle(Color.white.opacity(0.35))
+                    .foregroundStyle(Color.fg.opacity(0.35))
             }
             .frame(width: 120, alignment: .leading)
 
@@ -863,11 +863,11 @@ struct FolderPropertyRow: View {
                         Text(folder.name)
                             .font(.custom("Switzer-Regular", size: 13))
                     }
-                    .foregroundStyle((folder.color ?? .white).opacity(0.7))
+                    .foregroundStyle((folder.color ?? .fg).opacity(0.7))
                 } else {
                     Text("None")
                         .font(.custom("Switzer-Regular", size: 13))
-                        .foregroundStyle(Color.white.opacity(0.2))
+                        .foregroundStyle(Color.fg.opacity(0.2))
                 }
             }
             .menuStyle(.borderlessButton)

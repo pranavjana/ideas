@@ -10,6 +10,7 @@ struct FolderBrowserView: View {
     private var rootFolders: [Folder]
 
     @Binding var selectedFolder: Folder?
+    var onFolderTap: (() -> Void)? = nil
     @State private var showNewFolder = false
     @State private var editingFolder: Folder?
     @State private var newSubfolderParent: Folder?
@@ -20,7 +21,7 @@ struct FolderBrowserView: View {
             HStack {
                 Text("folders")
                     .font(.custom("Switzer-Medium", size: 11))
-                    .foregroundStyle(Color.white.opacity(0.3))
+                    .foregroundStyle(Color.fg.opacity(0.3))
                     .textCase(.uppercase)
 
                 Spacer()
@@ -30,7 +31,7 @@ struct FolderBrowserView: View {
                 } label: {
                     Image(systemName: "plus")
                         .font(.system(size: 10))
-                        .foregroundStyle(Color.white.opacity(0.3))
+                        .foregroundStyle(Color.fg.opacity(0.3))
                 }
                 .buttonStyle(.plain)
             }
@@ -41,6 +42,7 @@ struct FolderBrowserView: View {
             // "All ideas" row
             folderRow(label: "all ideas", icon: "tray.fill", color: nil, isSelected: selectedFolder == nil, depth: 0) {
                 withAnimation(.easeInOut(duration: 0.15)) { selectedFolder = nil }
+                onFolderTap?()
             }
 
             // Folder tree
@@ -75,6 +77,7 @@ struct FolderBrowserView: View {
                     count: folder.ideas.count
                 ) {
                     withAnimation(.easeInOut(duration: 0.15)) { selectedFolder = folder }
+                    onFolderTap?()
                 }
                 .contextMenu {
                     Button {
@@ -116,12 +119,12 @@ struct FolderBrowserView: View {
             HStack(spacing: 8) {
                 Image(systemName: icon)
                     .font(.system(size: 11))
-                    .foregroundStyle((color ?? .white).opacity(isSelected ? 0.7 : 0.35))
+                    .foregroundStyle((color ?? .fg).opacity(isSelected ? 0.7 : 0.35))
                     .frame(width: 16)
 
                 Text(label)
                     .font(.custom("Switzer-Regular", size: 12))
-                    .foregroundStyle(Color.white.opacity(isSelected ? 0.85 : 0.4))
+                    .foregroundStyle(Color.fg.opacity(isSelected ? 0.85 : 0.4))
                     .lineLimit(1)
 
                 Spacer()
@@ -129,7 +132,7 @@ struct FolderBrowserView: View {
                 if let count, count > 0 {
                     Text("\(count)")
                         .font(.custom("Switzer-Light", size: 10))
-                        .foregroundStyle(Color.white.opacity(0.2))
+                        .foregroundStyle(Color.fg.opacity(0.2))
                 }
             }
             .padding(.leading, CGFloat(depth) * 14 + 12)
@@ -137,7 +140,7 @@ struct FolderBrowserView: View {
             .padding(.vertical, 6)
             .background(
                 RoundedRectangle(cornerRadius: 6)
-                    .fill(Color.white.opacity(isSelected ? 0.06 : 0))
+                    .fill(Color.fg.opacity(isSelected ? 0.06 : 0))
             )
             .contentShape(Rectangle())
         }
@@ -183,9 +186,12 @@ struct FolderEditorSheet: View {
         "chart.bar", "wand.and.stars", "flask", "atom"
     ]
 
-    private static let colorOptions = [
-        "", "#FF4D4D", "#FF8833", "#FFB800", "#44BB44",
-        "#33AAFF", "#8855FF", "#FF55AA", "#88CCCC"
+    private static let colorOptions: [(name: String, color: Color?)] = [
+        ("none", nil),
+        ("red", .red), ("orange", .orange), ("yellow", .yellow),
+        ("green", .green), ("mint", .mint), ("teal", .teal),
+        ("cyan", .cyan), ("blue", .blue), ("indigo", .indigo),
+        ("purple", .purple), ("pink", .pink), ("brown", .brown),
     ]
 
     /// Create new folder under parent
@@ -212,11 +218,11 @@ struct FolderEditorSheet: View {
             HStack {
                 Text(editing != nil ? "Edit folder" : "New folder")
                     .font(.custom("Switzer-Semibold", size: 16))
-                    .foregroundStyle(Color.white.opacity(0.85))
+                    .foregroundStyle(Color.fg.opacity(0.85))
                 Spacer()
                 Button("Cancel") { dismiss() }
                     .font(.custom("Switzer-Regular", size: 13))
-                    .foregroundStyle(Color.white.opacity(0.4))
+                    .foregroundStyle(Color.fg.opacity(0.4))
                     .buttonStyle(.plain)
             }
 
@@ -224,7 +230,7 @@ struct FolderEditorSheet: View {
             VStack(alignment: .leading, spacing: 6) {
                 Text("Name")
                     .font(.custom("Switzer-Medium", size: 12))
-                    .foregroundStyle(Color.white.opacity(0.5))
+                    .foregroundStyle(Color.fg.opacity(0.5))
                 TextField("Folder name", text: $name)
                     .textFieldStyle(.plain)
                     .font(.custom("Switzer-Regular", size: 14))
@@ -232,8 +238,8 @@ struct FolderEditorSheet: View {
                     .padding(.vertical, 8)
                     .background(
                         RoundedRectangle(cornerRadius: 8)
-                            .fill(Color.white.opacity(0.04))
-                            .stroke(Color.white.opacity(0.08), lineWidth: 1)
+                            .fill(Color.fg.opacity(0.04))
+                            .stroke(Color.fg.opacity(0.08), lineWidth: 1)
                     )
             }
 
@@ -241,23 +247,23 @@ struct FolderEditorSheet: View {
             VStack(alignment: .leading, spacing: 6) {
                 Text("Icon")
                     .font(.custom("Switzer-Medium", size: 12))
-                    .foregroundStyle(Color.white.opacity(0.5))
-                LazyVGrid(columns: Array(repeating: GridItem(.fixed(32), spacing: 6), count: 8), spacing: 6) {
+                    .foregroundStyle(Color.fg.opacity(0.5))
+                LazyVGrid(columns: Array(repeating: GridItem(.fixed(32), spacing: 6), count: 9), spacing: 6) {
                     ForEach(Self.iconOptions, id: \.self) { opt in
                         Button {
                             icon = opt
                         } label: {
                             Image(systemName: opt)
                                 .font(.system(size: 12))
-                                .foregroundStyle(Color.white.opacity(icon == opt ? 0.85 : 0.3))
+                                .foregroundStyle(Color.fg.opacity(icon == opt ? 0.85 : 0.3))
                                 .frame(width: 32, height: 32)
                                 .background(
                                     RoundedRectangle(cornerRadius: 6)
-                                        .fill(Color.white.opacity(icon == opt ? 0.1 : 0.03))
+                                        .fill(Color.fg.opacity(icon == opt ? 0.1 : 0.03))
                                 )
                                 .overlay(
                                     RoundedRectangle(cornerRadius: 6)
-                                        .strokeBorder(Color.white.opacity(icon == opt ? 0.2 : 0), lineWidth: 1)
+                                        .strokeBorder(Color.fg.opacity(icon == opt ? 0.2 : 0), lineWidth: 1)
                                 )
                         }
                         .buttonStyle(.plain)
@@ -269,19 +275,21 @@ struct FolderEditorSheet: View {
             VStack(alignment: .leading, spacing: 6) {
                 Text("Color")
                     .font(.custom("Switzer-Medium", size: 12))
-                    .foregroundStyle(Color.white.opacity(0.5))
-                HStack(spacing: 8) {
-                    ForEach(Self.colorOptions, id: \.self) { hex in
-                        let c = hex.isEmpty ? Color.white : (Color(hex: hex) ?? .white)
+                    .foregroundStyle(Color.fg.opacity(0.5))
+                LazyVGrid(columns: Array(repeating: GridItem(.fixed(28), spacing: 8), count: 7), spacing: 8) {
+                    ForEach(Self.colorOptions, id: \.name) { option in
                         Button {
-                            colorHex = hex
+                            colorHex = option.name == "none" ? "" : option.name
                         } label: {
                             Circle()
-                                .fill(hex.isEmpty ? Color.white.opacity(0.15) : c)
-                                .frame(width: 24, height: 24)
+                                .fill(option.color ?? Color.fg.opacity(0.15))
+                                .frame(width: 28, height: 28)
                                 .overlay(
                                     Circle()
-                                        .strokeBorder(Color.white.opacity(colorHex == hex ? 0.8 : 0), lineWidth: 2)
+                                        .strokeBorder(Color.fg.opacity(
+                                            (option.name == "none" && colorHex.isEmpty) ||
+                                            colorHex == option.name ? 0.8 : 0
+                                        ), lineWidth: 2)
                                 )
                         }
                         .buttonStyle(.plain)
@@ -297,20 +305,20 @@ struct FolderEditorSheet: View {
             } label: {
                 Text(editing != nil ? "Save" : "Create")
                     .font(.custom("Switzer-Medium", size: 14))
-                    .foregroundStyle(Color.white.opacity(name.trimmingCharacters(in: .whitespaces).isEmpty ? 0.3 : 0.85))
+                    .foregroundStyle(Color.fg.opacity(name.trimmingCharacters(in: .whitespaces).isEmpty ? 0.3 : 0.85))
                     .frame(maxWidth: .infinity)
                     .padding(.vertical, 10)
                     .background(
                         RoundedRectangle(cornerRadius: 8)
-                            .fill(Color.white.opacity(0.08))
+                            .fill(Color.fg.opacity(0.08))
                     )
             }
             .buttonStyle(.plain)
             .disabled(name.trimmingCharacters(in: .whitespaces).isEmpty)
         }
         .padding(20)
-        .frame(width: 360, height: 440)
-        .background(Color(red: 0.11, green: 0.11, blue: 0.11))
+        .frame(width: 380)
+        .background(Color.bgElevated)
     }
 
     private func save() {

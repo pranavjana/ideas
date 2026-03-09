@@ -31,7 +31,7 @@ class Folder {
 
     var color: Color? {
         guard !colorHex.isEmpty else { return nil }
-        return Color(hex: colorHex)
+        return Color.systemColor(named: colorHex) ?? Color.accent(hex: colorHex)
     }
 
     /// All ideas in this folder and all descendant folders.
