@@ -1,7 +1,7 @@
 #!/bin/bash
 set -euo pipefail
 
-# Build ideas.app and package it into a DMG
+# Build ideas.app and package it into a DMG + ZIP (for Sparkle updates)
 # Usage: ./scripts/build-dmg.sh [version]
 # Example: ./scripts/build-dmg.sh 0.1.0
 
@@ -10,6 +10,7 @@ SCHEME="ideas"
 APP_NAME="ideas"
 BUILD_DIR="build"
 DMG_NAME="${APP_NAME}-${VERSION}.dmg"
+ZIP_NAME="${APP_NAME}-${VERSION}.zip"
 
 echo "==> Building ${APP_NAME} v${VERSION}..."
 
@@ -39,7 +40,7 @@ if [ ! -d "${APP_PATH}" ]; then
     exit 1
 fi
 
-# Create DMG
+# Create DMG (for manual download)
 echo "==> Creating DMG..."
 DMG_TEMP="${BUILD_DIR}/dmg-staging"
 mkdir -p "${DMG_TEMP}"
@@ -55,6 +56,13 @@ hdiutil create \
 
 rm -rf "${DMG_TEMP}"
 
+# Create ZIP (for Sparkle auto-updates)
+echo "==> Creating ZIP for Sparkle..."
+cd "${BUILD_DIR}"
+ditto -c -k --sequesterRsrc --keepParent "${APP_NAME}.xcarchive/Products/Applications/${APP_NAME}.app" "${ZIP_NAME}"
+cd ..
+
 echo ""
-echo "==> Done! DMG at: ${BUILD_DIR}/${DMG_NAME}"
-echo "    Size: $(du -h "${BUILD_DIR}/${DMG_NAME}" | cut -f1)"
+echo "==> Done!"
+echo "    DMG: ${BUILD_DIR}/${DMG_NAME} ($(du -h "${BUILD_DIR}/${DMG_NAME}" | cut -f1))"
+echo "    ZIP: ${BUILD_DIR}/${ZIP_NAME} ($(du -h "${BUILD_DIR}/${ZIP_NAME}" | cut -f1))"

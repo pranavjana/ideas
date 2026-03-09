@@ -126,6 +126,7 @@
 			name = ideas;
 			packageProductDependencies = (
 				FD5BB7DD2F55F03500EC5EAB /* Textual */,
+				FD32EC952F5E6F2B003A8BF2 /* Sparkle */,
 			);
 			productName = ideas;
 			productReference = FD1CF8CD2F54CC6A00A3CCC3 /* ideas.app */;
@@ -211,6 +212,7 @@
 			minimizedProjectReferenceProxies = 1;
 			packageReferences = (
 				FD5BB7DB2F55EFB100EC5EAB /* XCRemoteSwiftPackageReference "textual" */,
+				FD32EC942F5E6F2B003A8BF1 /* XCRemoteSwiftPackageReference "Sparkle" */,
 			);
 			preferredProjectObjectVersion = 77;
 			productRefGroup = FD1CF8CE2F54CC6A00A3CCC3 /* Products */;
@@ -409,7 +411,7 @@
 		FD1CF8EF2F54CC6C00A3CCC3 /* Debug */ = {
 			isa = XCBuildConfiguration;
 			buildSettings = {
-				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+				ASSETCATALOG_COMPILER_APPICON_NAME = ideas;
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
 				CODE_SIGN_STYLE = Automatic;
 				COMBINE_HIDPI_IMAGES = YES;
@@ -457,7 +459,7 @@
 		FD1CF8F02F54CC6C00A3CCC3 /* Release */ = {
 			isa = XCBuildConfiguration;
 			buildSettings = {
-				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+				ASSETCATALOG_COMPILER_APPICON_NAME = ideas;
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
 				CODE_SIGN_STYLE = Automatic;
 				COMBINE_HIDPI_IMAGES = YES;
@@ -624,6 +626,14 @@
 /* End XCConfigurationList section */
 
 /* Begin XCRemoteSwiftPackageReference section */
+		FD32EC942F5E6F2B003A8BF1 /* XCRemoteSwiftPackageReference "Sparkle" */ = {
+			isa = XCRemoteSwiftPackageReference;
+			repositoryURL = "https://github.com/sparkle-project/Sparkle";
+			requirement = {
+				kind = upToNextMajorVersion;
+				minimumVersion = 2.9.0;
+			};
+		};
 		FD5BB7DB2F55EFB100EC5EAB /* XCRemoteSwiftPackageReference "textual" */ = {
 			isa = XCRemoteSwiftPackageReference;
 			repositoryURL = "https://github.com/gonzalezreal/textual";
@@ -635,6 +645,11 @@
 /* End XCRemoteSwiftPackageReference section */
 
 /* Begin XCSwiftPackageProductDependency section */
+		FD32EC952F5E6F2B003A8BF2 /* Sparkle */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = FD32EC942F5E6F2B003A8BF1 /* XCRemoteSwiftPackageReference "Sparkle" */;
+			productName = Sparkle;
+		};
 		FD5BB7DD2F55F03500EC5EAB /* Textual */ = {
 			isa = XCSwiftPackageProductDependency;
 			package = FD5BB7DB2F55EFB100EC5EAB /* XCRemoteSwiftPackageReference "textual" */;

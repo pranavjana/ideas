@@ -4,6 +4,9 @@ import SwiftData
 struct SettingsView: View {
     @Environment(\.modelContext) private var modelContext
     @Query private var profiles: [UserProfile]
+    #if os(macOS)
+    @StateObject private var updaterViewModel = UpdaterViewModel()
+    #endif
     @State private var isGenerating = false
     @State private var newTag = ""
     @State private var bioText = ""
@@ -22,7 +25,7 @@ struct SettingsView: View {
             // Header
             Text("settings")
                 .font(.custom("Switzer-Medium", size: 18))
-                .foregroundStyle(Color.white.opacity(0.7))
+                .foregroundStyle(Color.fg.opacity(0.7))
                 .padding(.horizontal, 32)
                 .padding(.top, 24)
                 .padding(.bottom, 24)
@@ -34,16 +37,16 @@ struct SettingsView: View {
 
                     Text("tell the ai about yourself — what you study, what you do, what you're into. it uses this as context for everything.")
                         .font(.custom("Switzer-Light", size: 12))
-                        .foregroundStyle(Color.white.opacity(0.25))
+                        .foregroundStyle(Color.fg.opacity(0.25))
                         .lineSpacing(4)
 
                     TextEditor(text: $bioText)
                         .font(.custom("Switzer-Regular", size: 14))
-                        .foregroundStyle(Color.white.opacity(0.8))
+                        .foregroundStyle(Color.fg.opacity(0.8))
                         .scrollContentBackground(.hidden)
                         .padding(12)
                         .frame(minHeight: 120)
-                        .background(Color.white.opacity(0.04))
+                        .background(Color.fg.opacity(0.04))
                         .clipShape(RoundedRectangle(cornerRadius: 8))
                         .onChange(of: bioText) {
                             ensureProfile().bio = bioText
@@ -67,10 +70,10 @@ struct SettingsView: View {
                                 Text(isGenerating ? "generating..." : "generate tags")
                                     .font(.custom("Switzer-Medium", size: 13))
                             }
-                            .foregroundStyle(Color.white.opacity(!bioText.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty ? 0.6 : 0.2))
+                            .foregroundStyle(Color.fg.opacity(!bioText.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty ? 0.6 : 0.2))
                             .padding(.horizontal, 14)
                             .padding(.vertical, 8)
-                            .background(Color.white.opacity(0.06))
+                            .background(Color.fg.opacity(0.06))
                             .clipShape(RoundedRectangle(cornerRadius: 6))
                         }
                         .buttonStyle(.plain)
@@ -90,14 +93,14 @@ struct SettingsView: View {
 
                         Text("click the color dot to assign a color to each tag.")
                             .font(.custom("Switzer-Light", size: 12))
-                            .foregroundStyle(Color.white.opacity(0.25))
+                            .foregroundStyle(Color.fg.opacity(0.25))
 
                         VStack(alignment: .leading, spacing: 6) {
                             ForEach(tags, id: \.self) { tag in
                                 TagColorRow(
                                     tag: tag,
                                     color: Binding(
-                                        get: { Color(hex: tagColors[tag] ?? "") ?? .white },
+                                        get: { Color.accent(hex: tagColors[tag] ?? "") ?? .fg },
                                         set: { newColor in
                                             tagColors[tag] = newColor.toHex()
                                             ensureProfile().tagColors = tagColors
@@ -125,7 +128,7 @@ struct SettingsView: View {
                             TextField("add tag...", text: $newTag)
                                 .textFieldStyle(.plain)
                                 .font(.custom("Switzer-Regular", size: 13))
-                                .foregroundStyle(Color.white.opacity(0.7))
+                                .foregroundStyle(Color.fg.opacity(0.7))
                                 .onSubmit {
                                     addCustomTag()
                                 }
@@ -136,7 +139,7 @@ struct SettingsView: View {
                                 }
                                 .buttonStyle(.plain)
                                 .font(.custom("Switzer-Regular", size: 12))
-                                .foregroundStyle(Color.white.opacity(0.4))
+                                .foregroundStyle(Color.fg.opacity(0.4))
                             }
                         }
                         .padding(.top, 4)
@@ -144,24 +147,58 @@ struct SettingsView: View {
 
                     // Divider
                     Rectangle()
-                        .fill(Color.white.opacity(0.06))
+                        .fill(Color.fg.opacity(0.06))
                         .frame(height: 1)
                         .padding(.vertical, 8)
+
+                    // Updates section
+                    #if os(macOS)
+                    sectionHeader("updates")
+
+                    HStack(spacing: 12) {
+                        Button {
+                            updaterViewModel.checkForUpdates()
+                        } label: {
+                            HStack(spacing: 6) {
+                                Image(systemName: "arrow.triangle.2.circlepath")
+                                    .font(.system(size: 11))
+                                Text("check for updates")
+                                    .font(.custom("Switzer-Medium", size: 13))
+                            }
+                            .foregroundStyle(Color.fg.opacity(0.6))
+                            .padding(.horizontal, 14)
+                            .padding(.vertical, 8)
+                            .background(Color.fg.opacity(0.06))
+                            .clipShape(RoundedRectangle(cornerRadius: 6))
+                        }
+                        .buttonStyle(.plain)
+                        .disabled(!updaterViewModel.canCheckForUpdates)
+
+                        Text("v\(Self.appVersion)")
+                            .font(.custom("Switzer-Light", size: 12))
+                            .foregroundStyle(Color.fg.opacity(0.2))
+                    }
+
+                    Rectangle()
+                        .fill(Color.fg.opacity(0.06))
+                        .frame(height: 1)
+                        .padding(.vertical, 8)
+                    #endif
 
                     // API Key section
                     sectionHeader("ai chat")
 
                     Text("enter your openrouter api key to use the chat feature. get one at openrouter.ai. stored locally.")
                         .font(.custom("Switzer-Light", size: 12))
-                        .foregroundStyle(Color.white.opacity(0.25))
+                        .foregroundStyle(Color.fg.opacity(0.25))
                         .lineSpacing(4)
 
                     SecureField("sk-or-...", text: $apiKeyText)
                         .textFieldStyle(.plain)
                         .font(.custom("Switzer-Regular", size: 14))
-                        .foregroundStyle(Color.white.opacity(0.8))
+                        .foregroundStyle(Color.fg.opacity(0.8))
                         .padding(12)
-                        .background(Color.white.opacity(0.04))
+                        .background(Color.fg.opacity(0.04))
                         .clipShape(RoundedRectangle(cornerRadius: 8))
                         .onChange(of: apiKeyText) {
                             ensureProfile().openaiAPIKey = apiKeyText
@@ -178,7 +215,7 @@ struct SettingsView: View {
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
         #if os(iOS)
-        .background(Color(red: 0.09, green: 0.09, blue: 0.09))
+        .background(Color.bgBase)
         #endif
         .onAppear {
             if !didLoad {
@@ -198,10 +235,12 @@ struct SettingsView: View {
         }
     }
 
+    private static let appVersion: String = Bundle.main.infoDictionary?["CFBundleShortVersionString"] as? String ?? "1.0"
+
     private func sectionHeader(_ title: String) -> some View {
         Text(title)
             .font(.custom("Switzer-Medium", size: 11))
-            .foregroundStyle(Color.white.opacity(0.3))
+            .foregroundStyle(Color.fg.opacity(0.3))
             .textCase(.uppercase)
             .tracking(1.5)
     }
@@ -273,44 +312,87 @@ struct TagColorRow: View {
     let onClearColor: () -> Void
     let onRemove: () -> Void
 
+    @State private var showSwatches = false
+
+    private static var presetHexColors: [String] { AccentPalette.hexOptions }
+
     var body: some View {
-        HStack(spacing: 10) {
-            ColorPicker("", selection: $color, supportsOpacity: false)
-                .labelsHidden()
-                .frame(width: 22, height: 22)
-                .scaleEffect(0.7)
+        VStack(alignment: .leading, spacing: 0) {
+            HStack(spacing: 10) {
+                Button { withAnimation(.easeOut(duration: 0.15)) { showSwatches.toggle() } } label: {
+                    Circle()
+                        .fill(hasColor ? color : Color.fg.opacity(0.15))
+                        .frame(width: 18, height: 18)
+                        .overlay(
+                            Circle()
+                                .strokeBorder(Color.fg.opacity(0.1), lineWidth: 1)
+                        )
+                }
+                .buttonStyle(.plain)
 
-            Text(tag)
-                .font(.custom("Switzer-Regular", size: 13))
-                .foregroundStyle(hasColor ? color : Color.white.opacity(0.6))
+                Text(tag)
+                    .font(.custom("Switzer-Regular", size: 13))
+                    .foregroundStyle(hasColor ? color : Color.fg.opacity(0.6))
 
-            Spacer()
+                Spacer()
 
-            if hasColor {
+                if hasColor {
+                    Button {
+                        onClearColor()
+                        showSwatches = false
+                    } label: {
+                        Text("clear")
+                            .font(.custom("Switzer-Light", size: 10))
+                            .foregroundStyle(Color.fg.opacity(0.25))
+                    }
+                    .buttonStyle(.plain)
+                }
+
                 Button {
-                    onClearColor()
+                    onRemove()
                 } label: {
-                    Text("clear")
-                        .font(.custom("Switzer-Light", size: 10))
-                        .foregroundStyle(Color.white.opacity(0.25))
+                    Image(systemName: "xmark")
+                        .font(.system(size: 9, weight: .bold))
+                        .foregroundStyle(Color.fg.opacity(0.25))
                 }
                 .buttonStyle(.plain)
             }
+            .padding(.horizontal, 12)
+            .padding(.vertical, 6)
 
-            Button {
-                onRemove()
-            } label: {
-                Image(systemName: "xmark")
-                    .font(.system(size: 9, weight: .bold))
-                    .foregroundStyle(Color.white.opacity(0.25))
+            if showSwatches {
+                HStack(spacing: 6) {
+                    ForEach(Self.presetHexColors, id: \.self) { hex in
+                        let c = AccentPalette.color(for: hex) ?? .fg
+                        Button {
+                            color = c
+                            showSwatches = false
+                        } label: {
+                            Circle()
+                                .fill(c)
+                                .frame(width: 20, height: 20)
+                                .overlay(
+                                    Circle()
+                                        .strokeBorder(Color.fg.opacity(
+                                            hasColor && color.toHex() == hex ? 0.8 : 0
+                                        ), lineWidth: 2)
+                                )
+                        }
+                        .buttonStyle(.plain)
+                    }
+                    ColorPicker("", selection: $color, supportsOpacity: false)
+                        .labelsHidden()
+                        .frame(width: 20, height: 20)
+                        .scaleEffect(0.65)
+                }
+                .padding(.horizontal, 12)
+                .padding(.bottom, 6)
+                .transition(.opacity.combined(with: .move(edge: .top)))
             }
-            .buttonStyle(.plain)
         }
-        .padding(.horizontal, 12)
-        .padding(.vertical, 6)
         .background(
             RoundedRectangle(cornerRadius: 8)
-                .fill(Color.white.opacity(0.04))
+                .fill(Color.fg.opacity(0.04))
         )
     }
 }

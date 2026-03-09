@@ -18,13 +18,51 @@ jobs:
         id: version
         run: echo "VERSION=${GITHUB_REF_NAME#v}" >> "$GITHUB_OUTPUT"
 
-      - name: Build and create DMG
+      - name: Build and create DMG + ZIP
         run: ./scripts/build-dmg.sh "${{ steps.version.outputs.VERSION }}"
+
+      - name: Generate Sparkle appcast
+        run: |
+          VERSION="${{ steps.version.outputs.VERSION }}"
+          ZIP_URL="https://github.com/${{ github.repository }}/releases/download/${GITHUB_REF_NAME}/ideas-${VERSION}.zip"
+          ZIP_SIZE=$(stat -f%z "build/ideas-${VERSION}.zip")
+          PUB_DATE=$(date -R)
+
+          cat > appcast.xml << APPCAST_EOF
+          <?xml version="1.0" encoding="utf-8"?>
+          <rss version="2.0" xmlns:sparkle="http://www.andymatuschak.org/xml-namespaces/sparkle" xmlns:dc="http://purl.org/dc/elements/1.1/">
+              <channel>
+                  <title>ideas</title>
+                  <description>ideas app updates</description>
+                  <language>en</language>
+                  <item>
+                      <title>v${VERSION}</title>
+                      <pubDate>${PUB_DATE}</pubDate>
+                      <sparkle:version>${VERSION}</sparkle:version>
+                      <sparkle:shortVersionString>${VERSION}</sparkle:shortVersionString>
+                      <sparkle:minimumSystemVersion>15.0</sparkle:minimumSystemVersion>
+                      <enclosure url="${ZIP_URL}" length="${ZIP_SIZE}" type="application/octet-stream" />
+                  </item>
+              </channel>
+          </rss>
+          APPCAST_EOF
+
+      - name: Commit updated appcast
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git fetch origin main
+          git checkout main
+          git add appcast.xml
+          git commit -m "Update appcast for v${{ steps.version.outputs.VERSION }}" || true
+          git push origin main
 
       - name: Create GitHub Release
         uses: softprops/action-gh-release@v2
         with:
-          files: build/ideas-${{ steps.version.outputs.VERSION }}.dmg
+          files: |
+            build/ideas-${{ steps.version.outputs.VERSION }}.dmg
+            build/ideas-${{ steps.version.outputs.VERSION }}.zip
           draft: false
           prerelease: true
           generate_release_notes: true
@@ -37,3 +75,6 @@ jobs:
             1. Download `ideas-${{ steps.version.outputs.VERSION }}.dmg` below
             2. Open the DMG and drag **ideas** to Applications
             3. Right-click → Open on first launch
+
+            ### Auto-updates
+            Already installed? The app will notify you of this update automatically.
