@@ -78,6 +78,7 @@ struct ContentView: View {
     @Query private var profiles: [UserProfile]
     @State private var viewModel: IdeasViewModel?
     @State private var chatViewModel: ChatViewModel?
+    @State private var focusViewModel: FocusViewModel?
     @State private var currentPage: Page = .ideas
     #if os(iOS)
     @State private var selectedPage: Page? = .ideas
@@ -256,6 +257,11 @@ struct ContentView: View {
             vm.ideasViewModel = viewModel
             chatViewModel = vm
         }
+        if focusViewModel == nil {
+            let vm = FocusViewModel(modelContext: modelContext)
+            vm.setIdeasViewModel(viewModel)
+            focusViewModel = vm
+        }
         #if os(macOS)
         isInputFocused = true
         #endif
@@ -352,7 +358,9 @@ struct ContentView: View {
         case .chat:
             ChatView(ideasViewModel: viewModel)
         case .focus:
-            FocusView(ideasViewModel: viewModel)
+            if let focusVM = focusViewModel {
+                FocusView(viewModel: focusVM)
+            }
         case .settings:
             SettingsView()
         }

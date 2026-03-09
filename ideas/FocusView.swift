@@ -2,9 +2,7 @@ import SwiftUI
 import SwiftData
 
 struct FocusView: View {
-    @Environment(\.modelContext) private var modelContext
-    var ideasViewModel: IdeasViewModel?
-    @State private var viewModel: FocusViewModel?
+    @Bindable var viewModel: FocusViewModel
     @State private var inputText = ""
     @State private var selectedModel: AIModel = AIModel.available[0]
     @FocusState private var isInputFocused: Bool
@@ -14,20 +12,11 @@ struct FocusView: View {
             Color(red: 0.09, green: 0.09, blue: 0.09)
                 .ignoresSafeArea()
 
-            if let vm = viewModel {
-                switch vm.phase {
-                case .chat:
-                    chatPhase(vm: vm)
-                case .confirmed:
-                    confirmedPhase(vm: vm)
-                }
-            }
-        }
-        .onAppear {
-            if viewModel == nil {
-                let vm = FocusViewModel(modelContext: modelContext)
-                vm.setIdeasViewModel(ideasViewModel)
-                viewModel = vm
+            switch viewModel.phase {
+            case .chat:
+                chatPhase(vm: viewModel)
+            case .confirmed:
+                confirmedPhase(vm: viewModel)
             }
         }
     }
@@ -131,9 +120,9 @@ struct FocusView: View {
                 .foregroundStyle(Color.white.opacity(0.9))
                 .focused($isInputFocused)
                 .onSubmit { sendMessage() }
-                .disabled(viewModel?.isStreaming ?? false)
+                .disabled(viewModel.isStreaming)
 
-            if viewModel?.isStreaming ?? false {
+            if viewModel.isStreaming {
                 ProgressView()
                     .scaleEffect(0.6)
                     .frame(width: 16, height: 16)
@@ -340,7 +329,7 @@ struct FocusView: View {
         let text = inputText
         inputText = ""
         Task {
-            await viewModel?.sendMessage(text, model: selectedModel.id)
+            await viewModel.sendMessage(text, model: selectedModel.id)
         }
     }
 
