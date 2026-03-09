@@ -1,0 +1,39 @@
+name: Release
+
+on:
+  push:
+    tags:
+      - 'v*'
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    runs-on: macos-15
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Extract version from tag
+        id: version
+        run: echo "VERSION=${GITHUB_REF_NAME#v}" >> "$GITHUB_OUTPUT"
+
+      - name: Build and create DMG
+        run: ./scripts/build-dmg.sh "${{ steps.version.outputs.VERSION }}"
+
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          files: build/ideas-${{ steps.version.outputs.VERSION }}.dmg
+          draft: false
+          prerelease: true
+          generate_release_notes: true
+          body: |
+            ## ideas v${{ steps.version.outputs.VERSION }} (alpha)
+
+            > ⚠️ **First launch**: Right-click the app → Open (required once to bypass Gatekeeper)
+
+            ### Install
+            1. Download `ideas-${{ steps.version.outputs.VERSION }}.dmg` below
+            2. Open the DMG and drag **ideas** to Applications
+            3. Right-click → Open on first launch
