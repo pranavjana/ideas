@@ -37,9 +37,13 @@ class FocusViewModel {
         }
     }
 
+    private static let focusDateKey = "focus_date"
+    private static let focusIdeaIDsKey = "focus_idea_ids"
+
     init(modelContext: ModelContext) {
         self.modelContext = modelContext
         loadUserName()
+        restoreFocus()
     }
 
     func setIdeasViewModel(_ vm: IdeasViewModel?) {
@@ -96,6 +100,7 @@ class FocusViewModel {
         withAnimation(.easeInOut(duration: 0.3)) {
             phase = .confirmed
         }
+        saveFocus()
     }
 
     func resetFocus() {
@@ -103,6 +108,44 @@ class FocusViewModel {
             phase = .chat
             focusItems = []
             messages = []
+        }
+        UserDefaults.standard.removeObject(forKey: Self.focusDateKey)
+        UserDefaults.standard.removeObject(forKey: Self.focusIdeaIDsKey)
+    }
+
+    // MARK: - Persistence (per-day)
+
+    private func saveFocus() {
+        let today = Calendar.current.startOfDay(for: Date())
+        UserDefaults.standard.set(today, forKey: Self.focusDateKey)
+        let texts = focusItems.map { $0.idea.text }
+        UserDefaults.standard.set(texts, forKey: Self.focusIdeaIDsKey)
+    }
+
+    private func restoreFocus() {
+        guard let savedDate = UserDefaults.standard.object(forKey: Self.focusDateKey) as? Date,
+              Calendar.current.isDate(savedDate, inSameDayAs: Date()) else {
+            UserDefaults.standard.removeObject(forKey: Self.focusDateKey)
+            UserDefaults.standard.removeObject(forKey: Self.focusIdeaIDsKey)
+            return
+        }
+
+        guard let texts = UserDefaults.standard.stringArray(forKey: Self.focusIdeaIDsKey),
+              !texts.isEmpty else { return }
+
+        let descriptor = FetchDescriptor<Idea>()
+        guard let allIdeas = try? modelContext.fetch(descriptor) else { return }
+
+        var matched: [Idea] = []
+        for text in texts {
+            if let idea = allIdeas.first(where: { $0.text == text }) {
+                matched.append(idea)
+            }
+        }
+
+        if !matched.isEmpty {
+            focusItems = matched.map { FocusItem(idea: $0) }
+            phase = .confirmed
         }
     }
 
