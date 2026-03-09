@@ -3,13 +3,14 @@ import SwiftData
 
 struct FocusView: View {
     @Bindable var viewModel: FocusViewModel
+    var onSelectIdea: ((Idea) -> Void)? = nil
     @State private var inputText = ""
     @State private var selectedModel: AIModel = AIModel.available[0]
     @FocusState private var isInputFocused: Bool
 
     var body: some View {
         ZStack {
-            Color(red: 0.09, green: 0.09, blue: 0.09)
+            Color.bgBase
                 .ignoresSafeArea()
 
             switch viewModel.phase {
@@ -67,7 +68,7 @@ struct FocusView: View {
                         .frame(width: 12, height: 12)
                     Text(activity)
                         .font(.custom("Switzer-Light", size: 11))
-                        .foregroundStyle(Color.white.opacity(0.3))
+                        .foregroundStyle(Color.fg.opacity(0.3))
                 }
                 .padding(.horizontal, 16)
                 .padding(.bottom, 4)
@@ -93,18 +94,18 @@ struct FocusView: View {
             let greeting = timeGreeting()
             Text(vm.userName.isEmpty ? "\(greeting)." : "\(greeting), \(vm.userName).")
                 .font(.custom("Gambarino-Regular", size: 28))
-                .foregroundStyle(Color.white.opacity(0.85))
+                .foregroundStyle(Color.fg.opacity(0.85))
 
             // Date
             Text(todayFormatted())
                 .font(.custom("Switzer-Light", size: 14))
-                .foregroundStyle(Color.white.opacity(0.3))
+                .foregroundStyle(Color.fg.opacity(0.3))
 
             // Prompt
             if vm.messages.isEmpty {
                 Text("what do you want to focus on today?")
                     .font(.custom("Switzer-Regular", size: 15))
-                    .foregroundStyle(Color.white.opacity(0.4))
+                    .foregroundStyle(Color.fg.opacity(0.4))
                     .padding(.top, 8)
             }
         }
@@ -117,7 +118,7 @@ struct FocusView: View {
             TextField("i want to focus on...", text: $inputText)
                 .textFieldStyle(.plain)
                 .font(.custom("Switzer-Regular", size: 15))
-                .foregroundStyle(Color.white.opacity(0.9))
+                .foregroundStyle(Color.fg.opacity(0.9))
                 .focused($isInputFocused)
                 .onSubmit { sendMessage() }
                 .disabled(viewModel.isStreaming)
@@ -149,19 +150,19 @@ struct FocusView: View {
                         HStack {
                             Text("today's focus")
                                 .font(.custom("Gambarino-Regular", size: 26))
-                                .foregroundStyle(Color.white.opacity(0.85))
+                                .foregroundStyle(Color.fg.opacity(0.85))
                             Spacer()
                             Button {
                                 vm.resetFocus()
                             } label: {
                                 Text("reset")
                                     .font(.custom("Switzer-Regular", size: 12))
-                                    .foregroundStyle(Color.white.opacity(0.3))
+                                    .foregroundStyle(Color.fg.opacity(0.3))
                                     .padding(.horizontal, 12)
                                     .padding(.vertical, 6)
                                     .background(
                                         RoundedRectangle(cornerRadius: 6)
-                                            .fill(Color.white.opacity(0.04))
+                                            .fill(Color.fg.opacity(0.04))
                                     )
                             }
                             .buttonStyle(.plain)
@@ -169,7 +170,7 @@ struct FocusView: View {
 
                         Text(todayFormatted())
                             .font(.custom("Switzer-Light", size: 13))
-                            .foregroundStyle(Color.white.opacity(0.3))
+                            .foregroundStyle(Color.fg.opacity(0.3))
 
                         // Progress
                         progressBar(vm: vm)
@@ -206,23 +207,23 @@ struct FocusView: View {
             HStack {
                 Text("\(vm.completedCount) of \(vm.totalCount) completed")
                     .font(.custom("Switzer-Regular", size: 12))
-                    .foregroundStyle(Color.white.opacity(0.4))
+                    .foregroundStyle(Color.fg.opacity(0.4))
                 Spacer()
                 if vm.totalCount > 0 {
                     Text("\(Int(Double(vm.completedCount) / Double(vm.totalCount) * 100))%")
                         .font(.custom("Switzer-Medium", size: 12))
-                        .foregroundStyle(Color.white.opacity(0.5))
+                        .foregroundStyle(Color.fg.opacity(0.5))
                 }
             }
 
             GeometryReader { geo in
                 ZStack(alignment: .leading) {
                     RoundedRectangle(cornerRadius: 3)
-                        .fill(Color.white.opacity(0.06))
+                        .fill(Color.fg.opacity(0.06))
                         .frame(height: 6)
 
                     RoundedRectangle(cornerRadius: 3)
-                        .fill(Color.white.opacity(0.25))
+                        .fill(Color.fg.opacity(0.25))
                         .frame(width: vm.totalCount > 0
                             ? geo.size.width * CGFloat(vm.completedCount) / CGFloat(vm.totalCount)
                             : 0,
@@ -239,53 +240,60 @@ struct FocusView: View {
     private func focusItemRow(item: FocusViewModel.FocusItem, vm: FocusViewModel) -> some View {
         VStack(alignment: .leading, spacing: 0) {
             // Main task
-            Button {
-                withAnimation(.easeInOut(duration: 0.15)) {
-                    vm.toggleItem(item)
-                }
-            } label: {
-                HStack(spacing: 12) {
+            HStack(spacing: 12) {
+                Button {
+                    withAnimation(.easeInOut(duration: 0.15)) {
+                        vm.toggleItem(item)
+                    }
+                } label: {
                     Image(systemName: item.isCompleted ? "checkmark.circle.fill" : "circle")
                         .font(.system(size: 18))
-                        .foregroundStyle(Color.white.opacity(item.isCompleted ? 0.5 : 0.2))
+                        .foregroundStyle(Color.fg.opacity(item.isCompleted ? 0.5 : 0.2))
+                }
+                .buttonStyle(.plain)
 
-                    VStack(alignment: .leading, spacing: 4) {
-                        Text(item.idea.text)
-                            .font(.custom("Switzer-Regular", size: 15))
-                            .foregroundStyle(Color.white.opacity(item.isCompleted ? 0.3 : 0.8))
-                            .strikethrough(item.isCompleted, color: Color.white.opacity(0.2))
-                            .lineLimit(2)
+                VStack(alignment: .leading, spacing: 4) {
+                    Text(item.idea.text)
+                        .font(.custom("Switzer-Regular", size: 15))
+                        .foregroundStyle(Color.fg.opacity(item.isCompleted ? 0.3 : 0.8))
+                        .strikethrough(item.isCompleted, color: Color.fg.opacity(0.2))
+                        .lineLimit(2)
 
-                        HStack(spacing: 8) {
-                            if item.idea.priority > 0 {
-                                Text(item.idea.priorityLevel.label)
-                                    .font(.custom("Switzer-Light", size: 10))
-                                    .foregroundStyle(item.idea.priorityLevel.color.opacity(0.7))
-                            }
-                            if let due = item.idea.formattedDueDate {
-                                Text(due)
-                                    .font(.custom("Switzer-Light", size: 10))
-                                    .foregroundStyle(Color.white.opacity(0.3))
-                            }
-                            if let folder = item.idea.folder {
-                                Text(folder.name)
-                                    .font(.custom("Switzer-Light", size: 10))
-                                    .foregroundStyle(Color.white.opacity(0.25))
-                            }
+                    HStack(spacing: 8) {
+                        if item.idea.priority > 0 {
+                            Text(item.idea.priorityLevel.label)
+                                .font(.custom("Switzer-Light", size: 10))
+                                .foregroundStyle(item.idea.priorityLevel.color.opacity(0.7))
+                        }
+                        if let due = item.idea.formattedDueDate {
+                            Text(due)
+                                .font(.custom("Switzer-Light", size: 10))
+                                .foregroundStyle(Color.fg.opacity(0.3))
+                        }
+                        if let folder = item.idea.folder {
+                            Text(folder.name)
+                                .font(.custom("Switzer-Light", size: 10))
+                                .foregroundStyle(Color.fg.opacity(0.25))
                         }
                     }
-
-                    Spacer()
                 }
-                .padding(.horizontal, 16)
-                .padding(.vertical, 14)
-                .background(
-                    RoundedRectangle(cornerRadius: 10)
-                        .fill(Color.white.opacity(item.isCompleted ? 0.02 : 0.04))
-                )
-                .contentShape(Rectangle())
+
+                Spacer()
+
+                Image(systemName: "chevron.right")
+                    .font(.system(size: 10, weight: .semibold))
+                    .foregroundStyle(Color.fg.opacity(0.12))
             }
-            .buttonStyle(.plain)
+            .padding(.horizontal, 16)
+            .padding(.vertical, 14)
+            .background(
+                RoundedRectangle(cornerRadius: 10)
+                    .fill(Color.fg.opacity(item.isCompleted ? 0.02 : 0.04))
+            )
+            .contentShape(Rectangle())
+            .onTapGesture {
+                onSelectIdea?(item.idea)
+            }
 
             // Subtasks
             if !item.subtasks.isEmpty && !item.isCompleted {
@@ -299,12 +307,12 @@ struct FocusView: View {
                             HStack(spacing: 10) {
                                 Image(systemName: subtask.isDone ? "checkmark.square.fill" : "square")
                                     .font(.system(size: 12))
-                                    .foregroundStyle(Color.white.opacity(subtask.isDone ? 0.35 : 0.2))
+                                    .foregroundStyle(Color.fg.opacity(subtask.isDone ? 0.35 : 0.2))
 
                                 Text(subtask.text)
                                     .font(.custom("Switzer-Light", size: 13))
-                                    .foregroundStyle(Color.white.opacity(subtask.isDone ? 0.25 : 0.55))
-                                    .strikethrough(subtask.isDone, color: Color.white.opacity(0.15))
+                                    .foregroundStyle(Color.fg.opacity(subtask.isDone ? 0.25 : 0.55))
+                                    .strikethrough(subtask.isDone, color: Color.fg.opacity(0.15))
                                     .lineLimit(1)
 
                                 Spacer()
