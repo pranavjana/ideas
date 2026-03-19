@@ -84,11 +84,6 @@ struct ChatView: View {
 
     private var chatContent: some View {
         VStack(spacing: 0) {
-            #if os(macOS)
-            // Model selector bar
-            chatModelSelector
-            #endif
-
             // Messages
             ScrollViewReader { proxy in
                 ScrollView {
@@ -152,76 +147,90 @@ struct ChatView: View {
         }
     }
 
-    // MARK: - Model Selector
-
-    private var chatModelSelector: some View {
-        HStack {
-            Spacer()
-            Menu {
-                ForEach(AIModel.available) { model in
-                    Button {
-                        selectedModel = model
-                    } label: {
-                        HStack {
-                            Text(model.name)
-                            if model.id == selectedModel.id {
-                                Image(systemName: "checkmark")
-                            }
-                        }
-                    }
-                }
-            } label: {
-                HStack(spacing: 4) {
-                    Text(selectedModel.name)
-                        .font(.custom("Switzer-Regular", size: 11))
-                        .foregroundStyle(Color.fg.opacity(0.4))
-                    Image(systemName: "chevron.down")
-                        .font(.system(size: 8))
-                        .foregroundStyle(Color.fg.opacity(0.3))
-                }
-                .padding(.horizontal, 10)
-                .padding(.vertical, 5)
-                .background(Color.fg.opacity(0.04))
-                .clipShape(RoundedRectangle(cornerRadius: 6))
-            }
-            .buttonStyle(.plain)
-            .padding(.trailing, 16)
-            .padding(.top, 8)
-        }
-    }
-
-    // MARK: - Input Bars
+    // MARK: - Input Bar (macOS)
 
     private var chatInputBar: some View {
-        VStack(spacing: 0) {
-            #if os(macOS)
+        let inputIsEmpty = inputText.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
+
+        return VStack(alignment: .leading, spacing: 0) {
+            // Image preview
             if let imageData = selectedImageData, let nsImage = NSImage(data: imageData) {
                 HStack(spacing: 8) {
                     Image(nsImage: nsImage)
                         .resizable()
                         .aspectRatio(contentMode: .fill)
-                        .frame(width: 60, height: 60)
+                        .frame(width: 52, height: 52)
                         .clipShape(RoundedRectangle(cornerRadius: 8))
-
-                    Button {
-                        selectedImageData = nil
-                    } label: {
-                        Image(systemName: "xmark.circle.fill")
-                            .font(.system(size: 14))
-                            .foregroundStyle(Color.fg.opacity(0.4))
-                    }
-                    .buttonStyle(.plain)
-
+                        .overlay(alignment: .topTrailing) {
+                            Button {
+                                selectedImageData = nil
+                            } label: {
+                                Image(systemName: "xmark.circle.fill")
+                                    .font(.system(size: 14))
+                                    .foregroundStyle(Color.fg.opacity(0.6))
+                                    .background(Circle().fill(Color.bgElevated))
+                            }
+                            .buttonStyle(.plain)
+                            .offset(x: 4, y: -4)
+                        }
                     Spacer()
                 }
-                .padding(.horizontal, 32)
+                .padding(.horizontal, 16)
+                .padding(.top, 12)
                 .padding(.bottom, 4)
             }
-            #endif
 
-            HStack(spacing: 8) {
-                #if os(macOS)
-                // Image attach button
+            // Text field area
+            TextField("ask about your ideas...", text: $inputText, axis: .vertical)
+                .textFieldStyle(.plain)
+                .font(.custom("Switzer-Regular", size: 14))
+                .foregroundStyle(Color.fg.opacity(0.9))
+                .lineLimit(1...6)
+                .focused($isInputFocused)
+                .onSubmit { sendMessage() }
+                .disabled(chatViewModel?.isStreaming ?? false)
+                .padding(.horizontal, 16)
+                .padding(.top, selectedImageData != nil ? 8 : 14)
+                .padding(.bottom, 10)
+
+            // Bottom toolbar row
+            HStack(spacing: 0) {
+                // Model selector
+                Menu {
+                    ForEach(AIModel.available) { model in
+                        Button {
+                            selectedModel = model
+                        } label: {
+                            HStack {
+                                Text(model.name)
+                                if model.id == selectedModel.id {
+                                    Image(systemName: "checkmark")
+                                }
+                            }
+                        }
+                    }
+                } label: {
+                    HStack(spacing: 5) {
+                        Image(systemName: "cpu")
+                            .font(.system(size: 9))
+                        Text(selectedModel.name)
+                            .font(.custom("Switzer-Medium", size: 11))
+                        Image(systemName: "chevron.down")
+                            .font(.system(size: 7, weight: .semibold))
+                    }
+                    .foregroundStyle(Color.fg.opacity(0.45))
+                    .padding(.horizontal, 8)
+                    .padding(.vertical, 4)
+                    .background(
+                        RoundedRectangle(cornerRadius: 5)
+                            .fill(Color.fg.opacity(0.05))
+                    )
+                }
+                .buttonStyle(.plain)
+
+                chatToolbarDivider
+
+                // Image attach
                 Button {
                     let panel = NSOpenPanel()
                     panel.allowedContentTypes = [.image]
@@ -231,30 +240,75 @@ struct ChatView: View {
                         selectedImageData = data
                     }
                 } label: {
-                    Image(systemName: "photo")
-                        .font(.system(size: 14))
-                        .foregroundStyle(Color.fg.opacity(selectedImageData != nil ? 0.7 : 0.25))
+                    HStack(spacing: 4) {
+                        Image(systemName: "photo")
+                            .font(.system(size: 10))
+                        Text("image")
+                            .font(.custom("Switzer-Medium", size: 11))
+                    }
+                    .foregroundStyle(Color.fg.opacity(selectedImageData != nil ? 0.6 : 0.3))
+                    .padding(.horizontal, 8)
+                    .padding(.vertical, 4)
                 }
                 .buttonStyle(.plain)
-                #endif
 
-                TextField("ask about your ideas...", text: $inputText)
-                    .textFieldStyle(.plain)
-                    .font(.custom("Switzer-Regular", size: 15))
-                    .foregroundStyle(Color.fg.opacity(0.9))
-                    .focused($isInputFocused)
-                    .onSubmit { sendMessage() }
-                    .disabled(chatViewModel?.isStreaming ?? false)
+                chatToolbarDivider
 
+                // Chat label
+                HStack(spacing: 4) {
+                    Image(systemName: "bubble.left")
+                        .font(.system(size: 9))
+                    Text("chat")
+                        .font(.custom("Switzer-Medium", size: 11))
+                }
+                .foregroundStyle(Color.fg.opacity(0.3))
+                .padding(.horizontal, 8)
+                .padding(.vertical, 4)
+
+                Spacer()
+
+                // Streaming indicator or send button
                 if chatViewModel?.isStreaming ?? false {
                     ProgressView()
-                        .scaleEffect(0.6)
+                        .scaleEffect(0.5)
                         .frame(width: 16, height: 16)
+                        .padding(.trailing, 4)
+                } else {
+                    Button { sendMessage() } label: {
+                        Image(systemName: "arrow.up")
+                            .font(.system(size: 11, weight: .semibold))
+                            .foregroundStyle(inputIsEmpty
+                                ? Color.fg.opacity(0.15)
+                                : Color.bgBase)
+                            .frame(width: 26, height: 26)
+                            .background(
+                                Circle()
+                                    .fill(inputIsEmpty
+                                        ? Color.fg.opacity(0.06)
+                                        : Color.fg.opacity(0.7))
+                            )
+                    }
+                    .buttonStyle(.plain)
+                    .disabled(inputIsEmpty)
                 }
             }
-            .padding(.horizontal, 32)
-            .padding(.vertical, 16)
+            .padding(.horizontal, 12)
+            .padding(.bottom, 10)
         }
+        .background(
+            RoundedRectangle(cornerRadius: 14)
+                .fill(Color.bgElevated)
+                .stroke(Color.fg.opacity(0.1), lineWidth: 1)
+        )
+        .padding(.horizontal, 24)
+        .padding(.vertical, 12)
+    }
+
+    private var chatToolbarDivider: some View {
+        Rectangle()
+            .fill(Color.fg.opacity(0.08))
+            .frame(width: 1, height: 14)
+            .padding(.horizontal, 4)
     }
 
     #if os(iOS)

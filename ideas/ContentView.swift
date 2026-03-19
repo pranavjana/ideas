@@ -541,29 +541,13 @@ struct ContentView: View {
         let responseText = chatViewModel?.silentResponseText ?? ""
         let activity = chatViewModel?.toolActivity
         let showResponse = isAiProcessing || !responseText.isEmpty
+        let inputIsEmpty = inputText.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
 
         return VStack(spacing: 0) {
             // AI response card — connected above the input pill
             if showResponse {
                 VStack(alignment: .leading, spacing: 6) {
-                    if let activity, isAiProcessing {
-                        HStack(spacing: 6) {
-                            ProgressView()
-                                .scaleEffect(0.5)
-                                .frame(width: 12, height: 12)
-                            Text(activity)
-                                .font(.custom("Switzer-Light", size: 11))
-                                .foregroundStyle(Color.fg.opacity(0.35))
-                        }
-                    }
-
-                    if !responseText.isEmpty {
-                        Text(responseText)
-                            .font(.custom("Switzer-Regular", size: 13))
-                            .foregroundStyle(Color.fg.opacity(0.75))
-                            .lineSpacing(3)
-                            .textSelection(.enabled)
-                    }
+                    aiResponseContent(responseText: responseText, activity: activity)
                 }
                 .padding(.horizontal, 16)
                 .padding(.vertical, 10)
@@ -610,23 +594,23 @@ struct ContentView: View {
                 Button { handleIdeasSubmit() } label: {
                     Image(systemName: "arrow.up")
                         .font(.system(size: 12, weight: .semibold))
-                        .foregroundStyle(inputText.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
+                        .foregroundStyle(inputIsEmpty
                             ? Color.fg.opacity(0.15)
                             : aiInputMode
-                                ? Color(red: 0.6, green: 0.5, blue: 1.0)
+                                ? Color.aiAccent
                                 : Color.fg.opacity(0.7))
                         .frame(width: 28, height: 28)
                         .background(
                             Circle()
-                                .fill(inputText.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
+                                .fill(inputIsEmpty
                                     ? Color.fg.opacity(0.04)
                                     : aiInputMode
-                                        ? Color(red: 0.6, green: 0.5, blue: 1.0).opacity(0.12)
+                                        ? Color.aiAccent.opacity(0.12)
                                         : Color.fg.opacity(0.08))
                         )
                 }
                 .buttonStyle(.plain)
-                .disabled(inputText.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
+                .disabled(inputIsEmpty)
             }
             .padding(.horizontal, 14)
             .padding(.vertical, 10)
@@ -642,7 +626,6 @@ struct ContentView: View {
     }
 
     private func inputModeTab(label: String, icon: String, isActive: Bool, action: @escaping () -> Void) -> some View {
-        let aiPurple = Color(red: 0.6, green: 0.5, blue: 1.0)
         let isAi = label == "ai"
 
         return Button(action: action) {
@@ -653,20 +636,42 @@ struct ContentView: View {
                     .font(.custom("Switzer-Medium", size: 11))
             }
             .foregroundStyle(isActive
-                ? (isAi ? aiPurple : Color.fg.opacity(0.8))
+                ? (isAi ? Color.aiAccent : Color.fg.opacity(0.8))
                 : Color.fg.opacity(0.3))
             .padding(.horizontal, 10)
             .padding(.vertical, 5)
             .background(
                 Capsule()
                     .fill(isActive
-                        ? (isAi ? aiPurple.opacity(0.12) : Color.fg.opacity(0.08))
+                        ? (isAi ? Color.aiAccent.opacity(0.12) : Color.fg.opacity(0.08))
                         : Color.clear)
             )
         }
         .buttonStyle(.plain)
     }
 
+
+    @ViewBuilder
+    private func aiResponseContent(responseText: String, activity: String?) -> some View {
+        if let activity, isAiProcessing {
+            HStack(spacing: 6) {
+                ProgressView()
+                    .scaleEffect(0.5)
+                    .frame(width: 12, height: 12)
+                Text(activity)
+                    .font(.custom("Switzer-Light", size: 11))
+                    .foregroundStyle(Color.fg.opacity(0.35))
+            }
+        }
+
+        if !responseText.isEmpty {
+            Text(responseText)
+                .font(.custom("Switzer-Regular", size: 13))
+                .foregroundStyle(Color.fg.opacity(0.75))
+                .lineSpacing(3)
+                .textSelection(.enabled)
+        }
+    }
 
     @ViewBuilder
     private var aiResponseCard: some View {
@@ -676,24 +681,7 @@ struct ContentView: View {
 
         if showCard {
             VStack(alignment: .leading, spacing: 8) {
-                if let activity, isAiProcessing {
-                    HStack(spacing: 6) {
-                        ProgressView()
-                            .scaleEffect(0.5)
-                            .frame(width: 12, height: 12)
-                        Text(activity)
-                            .font(.custom("Switzer-Light", size: 11))
-                            .foregroundStyle(Color.fg.opacity(0.35))
-                    }
-                }
-
-                if !responseText.isEmpty {
-                    Text(responseText)
-                        .font(.custom("Switzer-Regular", size: 13))
-                        .foregroundStyle(Color.fg.opacity(0.75))
-                        .lineSpacing(3)
-                        .textSelection(.enabled)
-                }
+                aiResponseContent(responseText: responseText, activity: activity)
             }
             .padding(12)
             .frame(maxWidth: .infinity, alignment: .leading)
@@ -712,13 +700,13 @@ struct ContentView: View {
             Image(systemName: aiInputMode ? "sparkles" : "pencil.line")
                 .font(.system(size: 12))
                 .foregroundStyle(aiInputMode
-                    ? Color(red: 0.6, green: 0.5, blue: 1.0)
+                    ? Color.aiAccent
                     : Color.fg.opacity(0.35))
                 .frame(width: 30, height: 30)
                 .background(
                     RoundedRectangle(cornerRadius: 6)
                         .fill(aiInputMode
-                            ? Color(red: 0.6, green: 0.5, blue: 1.0).opacity(0.12)
+                            ? Color.aiAccent.opacity(0.12)
                             : Color.clear)
                 )
                 .contentShape(Rectangle())

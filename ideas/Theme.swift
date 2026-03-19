@@ -65,6 +65,9 @@ extension Color {
         dark: PlatformColor(white: 1, alpha: 1)
     )
 
+    /// AI / sparkle accent — purple
+    static let aiAccent = Color(red: 0.6, green: 0.5, blue: 1.0)
+
     // MARK: - System Color by Name
 
     /// Resolve a SwiftUI system color name (e.g. "red", "blue", "mint")

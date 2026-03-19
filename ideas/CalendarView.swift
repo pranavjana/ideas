@@ -289,22 +289,35 @@ struct CalendarView: View {
         .buttonStyle(.plain)
     }
 
-    private var headerTitle: String {
+    private static let monthYearFormatter: DateFormatter = {
         let fmt = DateFormatter()
+        fmt.dateFormat = "MMMM yyyy"
+        return fmt
+    }()
+
+    private static let shortMonthFormatter: DateFormatter = {
+        let fmt = DateFormatter()
+        fmt.dateFormat = "MMM"
+        return fmt
+    }()
+
+    private static let yearFormatter: DateFormatter = {
+        let fmt = DateFormatter()
+        fmt.dateFormat = "yyyy"
+        return fmt
+    }()
+
+    private var headerTitle: String {
         if viewMode == .week {
             let days = weekDays
             guard let first = days.first, let last = days.last else { return "" }
             if cal.component(.month, from: first) == cal.component(.month, from: last) {
-                fmt.dateFormat = "MMMM yyyy"
-                return fmt.string(from: first).lowercased()
+                return Self.monthYearFormatter.string(from: first).lowercased()
             } else {
-                let mf = DateFormatter(); mf.dateFormat = "MMM"
-                let yf = DateFormatter(); yf.dateFormat = "yyyy"
-                return "\(mf.string(from: first).lowercased()) – \(mf.string(from: last).lowercased()) \(yf.string(from: last))"
+                return "\(Self.shortMonthFormatter.string(from: first).lowercased()) – \(Self.shortMonthFormatter.string(from: last).lowercased()) \(Self.yearFormatter.string(from: last))"
             }
         } else {
-            fmt.dateFormat = "MMMM yyyy"
-            return fmt.string(from: displayedDate).lowercased()
+            return Self.monthYearFormatter.string(from: displayedDate).lowercased()
         }
     }
 
@@ -1291,68 +1304,64 @@ struct CalendarView: View {
         return Color.fg.opacity(0.35)
     }
 
-    private func quickAddTagChip(tag: String?, label: String) -> some View {
-        let isSelected = quickAddSelectedTag == tag
-        let chipColor: Color = {
-            if let tag, let hex = tagColors[tag], let c = Color.accent(hex: hex) {
-                return c
-            }
-            return Color.fg
-        }()
-
-        return Button {
-            withAnimation(.easeInOut(duration: 0.15)) {
-                quickAddSelectedTag = tag
-            }
+    private func selectableChip(
+        label: String,
+        isSelected: Bool,
+        color: Color = Color.fg,
+        showBorder: Bool = false,
+        action: @escaping () -> Void
+    ) -> some View {
+        Button {
+            withAnimation(.easeInOut(duration: 0.15)) { action() }
         } label: {
             Text(label)
                 .font(.custom("Switzer-Medium", size: 11))
-                .foregroundStyle(isSelected ? chipColor.opacity(0.9) : Color.fg.opacity(0.35))
+                .foregroundStyle(isSelected ? color.opacity(0.9) : Color.fg.opacity(0.35))
                 .padding(.horizontal, 10)
                 .padding(.vertical, 5)
                 .background(
                     RoundedRectangle(cornerRadius: 6)
-                        .fill(isSelected ? chipColor.opacity(0.15) : Color.fg.opacity(0.04))
+                        .fill(isSelected ? color.opacity(0.15) : Color.fg.opacity(0.04))
                 )
                 .overlay(
                     RoundedRectangle(cornerRadius: 6)
-                        .stroke(isSelected ? chipColor.opacity(0.3) : Color.clear, lineWidth: 1)
+                        .stroke(isSelected && showBorder ? color.opacity(0.3) : Color.clear, lineWidth: 1)
                 )
         }
         .buttonStyle(.plain)
     }
 
+    private func quickAddTagChip(tag: String?, label: String) -> some View {
+        let isSelected = quickAddSelectedTag == tag
+        let chipColor: Color = {
+            if let tag, let hex = tagColors[tag], let c = Color.accent(hex: hex) { return c }
+            return Color.fg
+        }()
+        return selectableChip(label: label, isSelected: isSelected, color: chipColor, showBorder: true) {
+            quickAddSelectedTag = tag
+        }
+    }
+
     private func quickAddDurationChip(minutes: Int) -> some View {
-        let isSelected = quickAddDuration == minutes
         let label: String = {
             if minutes < 60 { return "\(minutes)m" }
             if minutes == 60 { return "1h" }
             if minutes == 90 { return "1.5h" }
             return "\(minutes / 60)h"
         }()
-
-        return Button {
-            withAnimation(.easeInOut(duration: 0.15)) {
-                quickAddDuration = minutes
-            }
-        } label: {
-            Text(label)
-                .font(.custom("Switzer-Medium", size: 11))
-                .foregroundStyle(isSelected ? Color.fg.opacity(0.8) : Color.fg.opacity(0.3))
-                .padding(.horizontal, 10)
-                .padding(.vertical, 5)
-                .background(
-                    RoundedRectangle(cornerRadius: 6)
-                        .fill(isSelected ? Color.fg.opacity(0.1) : Color.fg.opacity(0.04))
-                )
+        return selectableChip(label: label, isSelected: quickAddDuration == minutes) {
+            quickAddDuration = minutes
         }
-        .buttonStyle(.plain)
     }
 
-    private func quickAddDateString(_ date: Date) -> String {
+    private static let quickAddDateFormatter: DateFormatter = {
         let fmt = DateFormatter()
         fmt.dateFormat = "EEEE, MMM d 'at' h:mm a"
-        return fmt.string(from: date).lowercased()
+        return fmt
+    }()
+
+    private func quickAddDateString(_ date: Date) -> String {
+        Self.quickAddDateFormatter.string(from: date).lowercased()
     }
 
     private func dismissQuickAdd() {
@@ -1366,8 +1375,10 @@ struct CalendarView: View {
         let trimmed = quickAddText.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !trimmed.isEmpty, let date = quickAddDate else { return }
 
+        let selectedTags: [String]? = quickAddSelectedTag.map { [$0] }
+
         if let ideasViewModel {
-            ideasViewModel.addIdea(trimmed, scheduledAt: date, durationMinutes: quickAddDuration)
+            ideasViewModel.addIdea(trimmed, scheduledAt: date, durationMinutes: quickAddDuration, tags: selectedTags)
         } else {
             let idea = Idea(text: trimmed)
             idea.dueDate = date
@@ -1384,22 +1395,6 @@ struct CalendarView: View {
 
             modelContext.insert(idea)
             try? modelContext.save()
-        }
-
-        // If we used the ViewModel path, we still need to set the tag
-        // We do this after creation by finding the most recent idea
-        if ideasViewModel != nil, let tag = quickAddSelectedTag {
-            // Find the idea that was just created (most recent with matching text)
-            DispatchQueue.main.asyncAfter(deadline: .now() + 0.3) {
-                if let newIdea = allIdeas.first(where: {
-                    $0.text.contains(trimmed) || trimmed.contains($0.text)
-                }) {
-                    if newIdea.tags.isEmpty || !newIdea.tags.contains(tag) {
-                        newIdea.tags = [tag]
-                        try? modelContext.save()
-                    }
-                }
-            }
         }
 
         dismissQuickAdd()
@@ -1429,16 +1424,24 @@ struct CalendarView: View {
         return minute == 0 ? "\(displayHour) \(period)" : "\(displayHour):\(String(format: "%02d", minute)) \(period)"
     }
 
-    private func dayOfWeekShort(_ date: Date) -> String {
+    private static let dayOfWeekFormatter: DateFormatter = {
         let fmt = DateFormatter()
         fmt.dateFormat = "EEE"
-        return fmt.string(from: date).uppercased()
+        return fmt
+    }()
+
+    private static let timeOfDayFormatter: DateFormatter = {
+        let fmt = DateFormatter()
+        fmt.dateFormat = "h:mm a"
+        return fmt
+    }()
+
+    private func dayOfWeekShort(_ date: Date) -> String {
+        Self.dayOfWeekFormatter.string(from: date).uppercased()
     }
 
     private func formatTime(_ date: Date) -> String {
-        let fmt = DateFormatter()
-        fmt.dateFormat = "h:mm a"
-        return fmt.string(from: date).lowercased()
+        Self.timeOfDayFormatter.string(from: date).lowercased()
     }
 
     @ViewBuilder

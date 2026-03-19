@@ -15,6 +15,7 @@ class IdeasViewModel {
         _ text: String,
         scheduledAt: Date? = nil,
         durationMinutes: Int? = nil,
+        tags: [String]? = nil,
         linkedAppleCalendarEventIdentifier: String? = nil,
         canvasSize: CGSize = CGSize(width: 600, height: 800)
     ) {
@@ -22,6 +23,9 @@ class IdeasViewModel {
         guard !trimmed.isEmpty else { return }
 
         let idea = Idea(text: trimmed)
+        if let tags, !tags.isEmpty {
+            idea.tags = tags
+        }
         idea.appleCalendarEventIdentifier = linkedAppleCalendarEventIdentifier
         if let scheduledAt {
             idea.dueDate = scheduledAt
