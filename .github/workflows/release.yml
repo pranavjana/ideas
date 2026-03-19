@@ -27,13 +27,10 @@ jobs:
           SPARKLE_PRIVATE_KEY: ${{ secrets.SPARKLE_PRIVATE_KEY }}
         run: |
           VERSION="${{ steps.version.outputs.VERSION }}"
-          SIGN_TOOL=$(find ~/Library/Developer/Xcode/DerivedData -path "*/Sparkle.framework/../bin/sign_update" -not -path "*/old_dsa_scripts/*" 2>/dev/null | head -1)
-
-          if [ -z "$SIGN_TOOL" ]; then
-            # Build first to get Sparkle tools
-            xcodebuild -scheme ideas -destination 'platform=macOS' -resolvePackageDependencies
-            SIGN_TOOL=$(find ~/Library/Developer/Xcode/DerivedData -path "*/Sparkle.framework/../bin/sign_update" -not -path "*/old_dsa_scripts/*" 2>/dev/null | head -1)
-          fi
+          # Build to ensure Sparkle tools are available
+          xcodebuild -scheme ideas -destination 'platform=macOS' -resolvePackageDependencies
+          SIGN_TOOL=$(find ~/Library/Developer/Xcode/DerivedData -name "sign_update" -not -path "*/old_dsa_scripts/*" -not -path "*/checkouts/*" 2>/dev/null | head -1)
+          echo "==> sign_update path: ${SIGN_TOOL:-not found}"
 
           if [ -n "$SIGN_TOOL" ] && [ -n "$SPARKLE_PRIVATE_KEY" ]; then
             SIGNATURE=$("$SIGN_TOOL" "build/ideas-${VERSION}.zip" --ed-key-file <(echo "$SPARKLE_PRIVATE_KEY") 2>&1)
