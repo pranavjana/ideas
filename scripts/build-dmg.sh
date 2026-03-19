@@ -28,7 +28,7 @@ xcodebuild archive \
     CODE_SIGNING_REQUIRED=NO \
     CODE_SIGNING_ALLOWED=NO \
     MARKETING_VERSION="${VERSION}" \
-    CURRENT_PROJECT_VERSION="$(date +%Y%m%d)" \
+    CURRENT_PROJECT_VERSION="$(date +%Y%m%d%H%M)" \
     | tail -5
 
 # Export the .app from the archive

@@ -46,7 +46,7 @@ jobs:
           VERSION="${{ steps.version.outputs.VERSION }}"
           ZIP_URL="https://github.com/${{ github.repository }}/releases/download/${GITHUB_REF_NAME}/ideas-${VERSION}.zip"
           ZIP_SIZE=$(stat -f%z "build/ideas-${VERSION}.zip")
-          BUILD_NUMBER=$(date +%Y%m%d)
+          BUILD_NUMBER=$(date +%Y%m%d%H%M)
           PUB_DATE=$(date -R)
           SIGNATURE='${{ steps.sign.outputs.SIGNATURE }}'
 
