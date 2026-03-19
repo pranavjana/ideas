@@ -333,3 +333,33 @@ extension Idea.DueStatus {
         }
     }
 }
+
+// MARK: - Shared Schedule Helpers
+
+extension Idea {
+    /// Parse dueTime "HH:mm" into hour/minute components.
+    var timeComponents: (hour: Int, minute: Int)? {
+        guard let timeStr = dueTime,
+              timeStr.count == 5,
+              let hour = Int(timeStr.prefix(2)),
+              let minute = Int(timeStr.suffix(2)) else { return nil }
+        return (hour, minute)
+    }
+
+    /// Resolve the display color for calendar event blocks.
+    func eventColor(from tagColors: [String: String]) -> Color {
+        if let accent = accentColor(from: tagColors) { return accent }
+        if priorityLevel != .none { return priorityLevel.color }
+        return Color.fg.opacity(0.35)
+    }
+}
+
+/// Format an "HH:mm" time string into a display string like "3 PM" or "3:15 PM".
+func formatDueTime(_ time: String) -> String {
+    guard time.count == 5,
+          let hour = Int(time.prefix(2)),
+          let minute = Int(time.suffix(2)) else { return time }
+    let period = hour >= 12 ? "PM" : "AM"
+    let displayHour = hour == 0 ? 12 : (hour > 12 ? hour - 12 : hour)
+    return minute == 0 ? "\(displayHour) \(period)" : "\(displayHour):\(String(format: "%02d", minute)) \(period)"
+}

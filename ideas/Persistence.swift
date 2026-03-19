@@ -92,7 +92,7 @@ struct StartupFailureView: View {
 
             VStack(alignment: .leading, spacing: 16) {
                 Text("database migration needed")
-                    .font(.custom("Gambarino-Regular", size: 28))
+                    .font(.custom("Switzer-Semibold", size: 22))
                     .foregroundStyle(Color.fg.opacity(0.9))
 
                 Text(message)

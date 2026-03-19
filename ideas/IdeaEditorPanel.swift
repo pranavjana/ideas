@@ -192,7 +192,7 @@ struct IdeaEditorPanel: View {
         VStack(alignment: .leading, spacing: 6) {
             if editingTitle {
                 TextField("untitled", text: $titleText, axis: .vertical)
-                    .font(.custom("Gambarino-Regular", size: 26))
+                    .font(.custom("Switzer-Semibold", size: 22))
                     .foregroundStyle(Color.fg.opacity(0.9))
                     .textFieldStyle(.plain)
                     .focused($isTitleFocused)
@@ -208,7 +208,7 @@ struct IdeaEditorPanel: View {
                     }
             } else {
                 Text(idea.text)
-                    .font(.custom("Gambarino-Regular", size: 26))
+                    .font(.custom("Switzer-Semibold", size: 22))
                     .foregroundStyle(Color.fg.opacity(0.9))
                     .lineSpacing(4)
                     .frame(maxWidth: .infinity, alignment: .leading)
@@ -557,7 +557,7 @@ struct MarkdownNotesView: View {
                         .padding(.top, 4)
                 } else if trimmed.hasPrefix("# ") {
                     Text(LocalizedStringKey(String(trimmed.dropFirst(2))))
-                        .font(.custom("Gambarino-Regular", size: 24))
+                        .font(.custom("Switzer-Semibold", size: 20))
                         .foregroundStyle(Color.fg.opacity(0.9))
                         .padding(.top, 6)
                 } else if trimmed.hasPrefix("- ") {

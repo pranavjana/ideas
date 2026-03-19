@@ -305,7 +305,7 @@ struct ContentView: View {
 
             ScrollView {
                 FolderBrowserView(selectedFolder: $selectedFolder) {
-                    withAnimation(.easeInOut(duration: 0.2)) { currentPage = .ideas }
+                    currentPage = .ideas
                 }
             }
             .padding(.horizontal, 4)
@@ -325,7 +325,7 @@ struct ContentView: View {
 
     private func navItem(page: Page) -> some View {
         Button {
-            withAnimation(.easeInOut(duration: 0.2)) { currentPage = page }
+            currentPage = page
         } label: {
             HStack(spacing: 10) {
                 Image(systemName: page.icon)

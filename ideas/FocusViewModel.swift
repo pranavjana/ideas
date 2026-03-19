@@ -10,19 +10,16 @@ class FocusViewModel {
     var errorMessage: String?
     var toolActivity: String?
 
-    // Focus state
-    var phase: FocusPhase = .chat
+    // Focus state — always visible, no phase transitions
     var focusItems: [FocusItem] = []
     var userName: String = ""
+
+    // Latest AI response (shown as card above input, auto-dismissed)
+    var latestResponse: String = ""
 
     private var modelContext: ModelContext
     private var ideasViewModel: IdeasViewModel?
     private let maxToolIterations = 10
-
-    enum FocusPhase {
-        case chat       // User is telling AI what they want to focus on
-        case confirmed  // Tasks are locked in, focus mode active
-    }
 
     struct FocusItem: Identifiable {
         let id = UUID()
@@ -38,7 +35,13 @@ class FocusViewModel {
     }
 
     private static let focusDateKey = "focus_date"
-    private static let focusIdeaIDsKey = "focus_idea_ids"
+    private static let focusIdeaTextsKey = "focus_idea_ids"
+
+    private static let promptDateFormatter: DateFormatter = {
+        let fmt = DateFormatter()
+        fmt.dateFormat = "EEEE, MMMM d, yyyy 'at' h:mm a"
+        return fmt
+    }()
 
     init(modelContext: ModelContext) {
         self.modelContext = modelContext
@@ -53,9 +56,7 @@ class FocusViewModel {
     private func loadUserName() {
         let descriptor = FetchDescriptor<UserProfile>()
         if let profile = (try? modelContext.fetch(descriptor))?.first, !profile.bio.isEmpty {
-            // Try to extract first name from bio
             let bio = profile.bio.trimmingCharacters(in: .whitespacesAndNewlines)
-            // Common patterns: "I'm Pranav", "My name is Pranav", or just take first word
             if let range = bio.range(of: #"(?:I'm|I am|my name is|name is|i'm)\s+(\w+)"#, options: [.regularExpression, .caseInsensitive]) {
                 let match = bio[range]
                 let words = match.split(separator: " ")
@@ -64,7 +65,6 @@ class FocusViewModel {
                     return
                 }
             }
-            // Fallback: first word if short enough
             let firstWord = bio.split(separator: " ").first.map(String.init) ?? ""
             if firstWord.count <= 15 && !firstWord.isEmpty {
                 userName = firstWord.lowercased()
@@ -72,81 +72,40 @@ class FocusViewModel {
         }
     }
 
-    // MARK: - Send Message
+    // MARK: - Focus Item Management
 
-    func sendMessage(_ text: String, model: String) async {
-        let trimmed = text.trimmingCharacters(in: .whitespacesAndNewlines)
-        guard !trimmed.isEmpty else { return }
-
-        guard let apiKey = fetchAPIKey(), !apiKey.isEmpty else {
-            errorMessage = "add your ai api key in settings"
-            return
+    func addFocusItem(_ idea: Idea) {
+        guard !focusItems.contains(where: { $0.idea.persistentModelID == idea.persistentModelID }) else { return }
+        withAnimation(.easeOut(duration: 0.2)) {
+            focusItems.append(FocusItem(idea: idea))
         }
-
-        messages.append(ChatMessage(role: .user, content: trimmed))
-        isStreaming = true
-        errorMessage = nil
-
-        await runAgenticLoop(apiKey: apiKey, model: model)
-
-        isStreaming = false
-        toolActivity = nil
+        saveFocus()
     }
 
-    // MARK: - Confirm Focus
+    func addFocusItems(_ ideas: [Idea]) {
+        for idea in ideas {
+            if !focusItems.contains(where: { $0.idea.persistentModelID == idea.persistentModelID }) {
+                focusItems.append(FocusItem(idea: idea))
+            }
+        }
+        saveFocus()
+    }
 
-    func confirmFocus(ideas: [Idea]) {
-        focusItems = ideas.map { FocusItem(idea: $0) }
-        withAnimation(.easeInOut(duration: 0.3)) {
-            phase = .confirmed
+    func removeFocusItem(_ item: FocusItem) {
+        withAnimation(.easeOut(duration: 0.2)) {
+            focusItems.removeAll { $0.id == item.id }
         }
         saveFocus()
     }
 
     func resetFocus() {
         withAnimation(.easeInOut(duration: 0.3)) {
-            phase = .chat
             focusItems = []
             messages = []
+            latestResponse = ""
         }
         UserDefaults.standard.removeObject(forKey: Self.focusDateKey)
-        UserDefaults.standard.removeObject(forKey: Self.focusIdeaIDsKey)
-    }
-
-    // MARK: - Persistence (per-day)
-
-    private func saveFocus() {
-        let today = Calendar.current.startOfDay(for: Date())
-        UserDefaults.standard.set(today, forKey: Self.focusDateKey)
-        let texts = focusItems.map { $0.idea.text }
-        UserDefaults.standard.set(texts, forKey: Self.focusIdeaIDsKey)
-    }
-
-    private func restoreFocus() {
-        guard let savedDate = UserDefaults.standard.object(forKey: Self.focusDateKey) as? Date,
-              Calendar.current.isDate(savedDate, inSameDayAs: Date()) else {
-            UserDefaults.standard.removeObject(forKey: Self.focusDateKey)
-            UserDefaults.standard.removeObject(forKey: Self.focusIdeaIDsKey)
-            return
-        }
-
-        guard let texts = UserDefaults.standard.stringArray(forKey: Self.focusIdeaIDsKey),
-              !texts.isEmpty else { return }
-
-        let descriptor = FetchDescriptor<Idea>()
-        guard let allIdeas = try? modelContext.fetch(descriptor) else { return }
-
-        var matched: [Idea] = []
-        for text in texts {
-            if let idea = allIdeas.first(where: { $0.text == text }) {
-                matched.append(idea)
-            }
-        }
-
-        if !matched.isEmpty {
-            focusItems = matched.map { FocusItem(idea: $0) }
-            phase = .confirmed
-        }
+        UserDefaults.standard.removeObject(forKey: Self.focusIdeaTextsKey)
     }
 
     func toggleItem(_ item: FocusItem) {
@@ -169,6 +128,63 @@ class FocusViewModel {
 
     var totalCount: Int {
         focusItems.count
+    }
+
+    // MARK: - Persistence (per-day)
+
+    private func saveFocus() {
+        let today = Calendar.current.startOfDay(for: Date())
+        UserDefaults.standard.set(today, forKey: Self.focusDateKey)
+        let texts = focusItems.map { $0.idea.text }
+        UserDefaults.standard.set(texts, forKey: Self.focusIdeaTextsKey)
+    }
+
+    private func restoreFocus() {
+        guard let savedDate = UserDefaults.standard.object(forKey: Self.focusDateKey) as? Date,
+              Calendar.current.isDate(savedDate, inSameDayAs: Date()) else {
+            UserDefaults.standard.removeObject(forKey: Self.focusDateKey)
+            UserDefaults.standard.removeObject(forKey: Self.focusIdeaTextsKey)
+            return
+        }
+
+        guard let texts = UserDefaults.standard.stringArray(forKey: Self.focusIdeaTextsKey),
+              !texts.isEmpty else { return }
+
+        let descriptor = FetchDescriptor<Idea>()
+        guard let allIdeas = try? modelContext.fetch(descriptor) else { return }
+
+        var matched: [Idea] = []
+        for text in texts {
+            if let idea = allIdeas.first(where: { $0.text == text }) {
+                matched.append(idea)
+            }
+        }
+
+        if !matched.isEmpty {
+            focusItems = matched.map { FocusItem(idea: $0) }
+        }
+    }
+
+    // MARK: - Send Message
+
+    func sendMessage(_ text: String, model: String) async {
+        let trimmed = text.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !trimmed.isEmpty else { return }
+
+        guard let apiKey = fetchAPIKey(), !apiKey.isEmpty else {
+            errorMessage = "add your ai api key in settings"
+            return
+        }
+
+        messages.append(ChatMessage(role: .user, content: trimmed))
+        isStreaming = true
+        errorMessage = nil
+        latestResponse = ""
+
+        await runAgenticLoop(apiKey: apiKey, model: model)
+
+        isStreaming = false
+        toolActivity = nil
     }
 
     // MARK: - Agentic Loop
@@ -203,6 +219,10 @@ class FocusViewModel {
                 toolActivity = nil
                 continue
             } else {
+                // Store latest AI text response for the card display
+                if let text, !text.isEmpty {
+                    latestResponse = text
+                }
                 break
             }
         }
@@ -235,10 +255,10 @@ class FocusViewModel {
             return "{\"error\": \"no matching ideas found\"}"
         }
 
-        confirmFocus(ideas: matched)
+        addFocusItems(matched)
 
         let names = matched.map { $0.text }
-        return IdeaTools.jsonResult(["success": true, "message": "Focus mode activated with \(matched.count) tasks", "tasks": names])
+        return IdeaTools.jsonResult(["success": true, "message": "Added \(matched.count) tasks to focus list", "tasks": names])
     }
 
     // MARK: - Stream Response
@@ -331,13 +351,11 @@ class FocusViewModel {
     private func buildSystemPrompt() -> String {
         var parts: [String] = []
 
-        // User context
         let profileDesc = FetchDescriptor<UserProfile>()
         if let profile = (try? modelContext.fetch(profileDesc))?.first, !profile.bio.isEmpty {
             parts.append("USER BIO: \(profile.bio)")
         }
 
-        // Full ideas context
         let ideasDescriptor = FetchDescriptor<Idea>(sortBy: [SortDescriptor(\Idea.createdAt, order: .reverse)])
         if let ideas = try? modelContext.fetch(ideasDescriptor) {
             let valid = ideas.filter { $0.modelContext != nil && !$0.isDone }
@@ -359,7 +377,14 @@ class FocusViewModel {
             }
         }
 
-        // Folder context
+        // Current focus items
+        if !focusItems.isEmpty {
+            let focusList = focusItems.map { item in
+                "- \(item.idea.text)\(item.isCompleted ? " [done]" : "")"
+            }.joined(separator: "\n")
+            parts.append("CURRENT FOCUS LIST:\n\(focusList)")
+        }
+
         let folderDescriptor = FetchDescriptor<Folder>()
         if let allFolders = try? modelContext.fetch(folderDescriptor), !allFolders.isEmpty {
             let roots = allFolders.filter { $0.parent == nil }.sorted { $0.name < $1.name }
@@ -371,29 +396,25 @@ class FocusViewModel {
             parts.append("FOLDERS:\n\(roots.map { tree($0) }.joined(separator: "\n"))")
         }
 
-        // Date/time
         let now = Date()
-        let fmt = DateFormatter()
-        fmt.dateFormat = "EEEE, MMMM d, yyyy 'at' h:mm a"
-        parts.append("NOW: \(fmt.string(from: now))")
+        parts.append("NOW: \(Self.promptDateFormatter.string(from: now))")
 
         parts.append("""
-        You are a focus coach helping the user plan their day. Your job is to understand what they want to focus on today, find the relevant ideas from their database, and help them commit to a focused task list.
+        You are a focus coach helping the user plan their day. The user always sees their focus task list and today's schedule side by side. You can add tasks to their focus list, suggest priorities, and create new ideas.
 
         YOUR APPROACH:
-        1. Listen to what the user wants to focus on today.
+        1. Listen to what the user wants to focus on or help with.
         2. Use the read tool to search for relevant ideas if needed. You already have the full list above, so only search if you need more detail.
-        3. If the user's request is ambiguous (e.g., "study for my exam" but they have multiple chapters), ask a clarifying question. Ask ONE question at a time.
-        4. Once you know exactly which ideas/tasks they want to focus on, call confirm_focus with the list of idea texts to match.
+        3. When you know which ideas they want to work on, call confirm_focus to add them to the focus list.
+        4. If the user mentions tasks that don't exist, create them first using the create tool, then add to focus.
+        5. You can also give advice on prioritization, time management, and task breakdown.
 
         RULES:
-        - Be warm but concise. This is a quick planning conversation, not a long discussion.
-        - Ask clarifying questions ONLY when truly needed — if they say "work on my project" and there's only one project, just confirm it.
-        - When you have enough info, call confirm_focus immediately. Don't ask "shall I confirm?" — just do it.
-        - The confirm_focus tool locks in the tasks and switches to focus mode. Only call it once you're confident about the task list.
-        - If the user mentions tasks that don't exist as ideas, you can create them first using the create tool, then confirm.
-        - Suggest a reasonable ordering if relevant (e.g., hardest first, deadlines first).
-        - Keep it to 3-7 focus items. If the user wants more, gently suggest prioritizing.
+        - Be warm but concise. This is a quick planning conversation.
+        - The user can also manually add items via the + button, so don't over-explain.
+        - When you have enough info, call confirm_focus immediately. Don't ask "shall I add these?" — just do it.
+        - Keep focus lists to 3-7 items. If the user wants more, gently suggest prioritizing.
+        - The confirm_focus tool ADDS to the existing focus list (it doesn't replace it).
         """)
 
         return parts.joined(separator: "\n\n")
@@ -402,13 +423,12 @@ class FocusViewModel {
     // MARK: - Tool Definitions
 
     static let toolDefinitions: [[String: Any]] = {
-        // Include standard CRUD tools plus the focus-specific confirm tool
         var tools = IdeaTools.definitions
         tools.append([
             "type": "function",
             "function": [
                 "name": "confirm_focus",
-                "description": "Lock in the user's focus tasks for today. Call this once you know which ideas they want to work on. This switches the UI to a focused task view.",
+                "description": "Add ideas to the user's focus list for today. Call this when you know which tasks they want to work on. Items are added to the existing list (not replaced).",
                 "parameters": [
                     "type": "object",
                     "properties": [
@@ -430,7 +450,7 @@ class FocusViewModel {
 
     private func toolActivityLabel(for name: String) -> String {
         switch name {
-        case "confirm_focus": return "setting up focus..."
+        case "confirm_focus": return "adding to focus..."
         case "create": return "creating..."
         case "read": return "searching..."
         case "update": return "updating..."

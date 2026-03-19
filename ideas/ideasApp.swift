@@ -14,6 +14,9 @@ struct ideasApp: App {
             case .ready(let container):
                 ContentView()
                     .modelContainer(container)
+                    #if os(macOS)
+                    .frame(minWidth: 760, minHeight: 375)
+                    #endif
             case .failed(let message):
                 StartupFailureView(message: message)
             }
@@ -21,6 +24,7 @@ struct ideasApp: App {
         #if os(macOS)
         .windowStyle(.hiddenTitleBar)
         .defaultSize(width: 1100, height: 750)
+        .windowResizability(.contentMinSize)
         #endif
     }
 

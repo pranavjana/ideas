@@ -247,7 +247,7 @@ struct CalendarView: View {
             }
 
             Text(headerTitle)
-                .font(.custom("Gambarino-Regular", size: 22))
+                .font(.custom("Switzer-Semibold", size: 18))
                 .foregroundStyle(Color.fg.opacity(0.85))
 
             Spacer()
@@ -1403,9 +1403,7 @@ struct CalendarView: View {
     // MARK: - Helpers
 
     private func eventColor(for idea: Idea) -> Color {
-        if let accent = idea.accentColor(from: tagColors) { return accent }
-        if idea.priorityLevel != .none { return idea.priorityLevel.color }
-        return Color.fg.opacity(0.35)
+        idea.eventColor(from: tagColors)
     }
 
     private func hourLabel(_ hour: Int) -> String {
@@ -1416,12 +1414,7 @@ struct CalendarView: View {
     }
 
     private func formatTime(_ time: String) -> String {
-        guard time.count == 5,
-              let hour = Int(time.prefix(2)),
-              let minute = Int(time.suffix(2)) else { return time }
-        let period = hour >= 12 ? "PM" : "AM"
-        let displayHour = hour == 0 ? 12 : (hour > 12 ? hour - 12 : hour)
-        return minute == 0 ? "\(displayHour) \(period)" : "\(displayHour):\(String(format: "%02d", minute)) \(period)"
+        formatDueTime(time)
     }
 
     private static let dayOfWeekFormatter: DateFormatter = {
@@ -1576,11 +1569,7 @@ struct CalendarView: View {
     }
 
     private func timeComponents(for idea: Idea) -> (hour: Int, minute: Int)? {
-        guard let timeStr = idea.dueTime,
-              timeStr.count == 5,
-              let hour = Int(timeStr.prefix(2)),
-              let minute = Int(timeStr.suffix(2)) else { return nil }
-        return (hour, minute)
+        idea.timeComponents
     }
 
     // MARK: - Navigation
