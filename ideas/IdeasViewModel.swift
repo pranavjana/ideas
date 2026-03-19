@@ -5,16 +5,34 @@ import SwiftData
 @Observable
 class IdeasViewModel {
     private var modelContext: ModelContext
+    private let cal = Calendar.current
 
     init(modelContext: ModelContext) {
         self.modelContext = modelContext
     }
 
-    func addIdea(_ text: String, canvasSize: CGSize = CGSize(width: 600, height: 800)) {
+    func addIdea(
+        _ text: String,
+        scheduledAt: Date? = nil,
+        durationMinutes: Int? = nil,
+        linkedAppleCalendarEventIdentifier: String? = nil,
+        canvasSize: CGSize = CGSize(width: 600, height: 800)
+    ) {
         let trimmed = text.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !trimmed.isEmpty else { return }
 
         let idea = Idea(text: trimmed)
+        idea.appleCalendarEventIdentifier = linkedAppleCalendarEventIdentifier
+        if let scheduledAt {
+            idea.dueDate = scheduledAt
+            idea.dueTime = String(
+                format: "%02d:%02d",
+                cal.component(.hour, from: scheduledAt),
+                cal.component(.minute, from: scheduledAt)
+            )
+            idea.durationMinutes = durationMinutes ?? 60
+        }
+
         // Position around origin, spread out in a circle
         let existingCount = (try? modelContext.fetchCount(FetchDescriptor<Idea>())) ?? 0
         let angle = (2.0 * Double.pi * Double(existingCount)) / max(Double(existingCount + 1), 6.0) - Double.pi / 2
@@ -30,6 +48,8 @@ class IdeasViewModel {
         // tagIdea automatically refreshes connections when done
         Task {
             await tagIdea(idea)
+            let syncEnabled = fetchProfile()?.appleCalendarSyncEnabled ?? false
+            AppleCalendarManager.shared.syncIdea(idea, enabled: syncEnabled)
         }
     }
 
@@ -61,7 +81,7 @@ class IdeasViewModel {
             systemPrompt = """
             You tag, categorize, and lightly clean up short ideas. \
             Only use tags from this list: [\(tagList)]. \
-            Pick 1-3 of the most relevant tags. Use lowercase. \
+            Pick exactly 1 primary tag. Use lowercase. \
             For category, pick the single best fitting tag from the list. \
             Think about the core topic, not surface keywords. \
             For cleanedText: fix typos, capitalize properly, and tighten phrasing while keeping the original meaning and voice. \
@@ -70,7 +90,7 @@ class IdeasViewModel {
         } else {
             systemPrompt = """
             You tag, categorize, and lightly clean up short ideas. \
-            Tags should describe the core topic (e.g. 'ml', 'finance', 'design', 'startup'). \
+            Pick exactly 1 primary tag that describes the core topic (e.g. 'ml', 'finance', 'design', 'startup'). \
             Category should be a broad domain (e.g. 'tech', 'business', 'personal', 'academic', 'creative', 'career'). \
             Be concise. Use lowercase. Think about what the idea is really about, not just surface keywords. \
             For cleanedText: fix typos, capitalize properly, and tighten phrasing while keeping the original meaning and voice. \
@@ -82,7 +102,7 @@ class IdeasViewModel {
             systemPrompt = "Context about the user: \(bio)\n\n" + systemPrompt
         }
 
-        systemPrompt += "\n\nRespond with JSON: {\"tags\": [\"tag1\", \"tag2\"], \"category\": \"category\", \"cleanedText\": \"cleaned version\"}"
+        systemPrompt += "\n\nRespond with JSON: {\"tags\": [\"tag1\"], \"category\": \"category\", \"cleanedText\": \"cleaned version\"}"
 
         do {
             let result = try await OpenAIService.jsonCompletion(
@@ -93,7 +113,7 @@ class IdeasViewModel {
                 ]
             )
 
-            let tags = result["tags"] as? [String] ?? []
+            let tags = Array((result["tags"] as? [String] ?? []).prefix(1))
             let category = result["category"] as? String ?? ""
             let cleanedText = result["cleanedText"] as? String
 

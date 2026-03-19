@@ -1,9 +1,12 @@
 import SwiftUI
 import SwiftData
+import EventKit
 
 struct SettingsView: View {
     @Environment(\.modelContext) private var modelContext
+    @Query private var ideas: [Idea]
     @Query private var profiles: [UserProfile]
+    @ObservedObject private var appleCalendarManager = AppleCalendarManager.shared
     #if os(macOS)
     @StateObject private var updaterViewModel = UpdaterViewModel()
     #endif
@@ -185,6 +188,80 @@ struct SettingsView: View {
                         .padding(.vertical, 8)
                     #endif
 
+                    sectionHeader("apple calendar")
+
+                    Text("show Apple Calendar events beside ideas in the calendar view, and sync timed ideas to Apple Calendar.")
+                        .font(.custom("Switzer-Light", size: 12))
+                        .foregroundStyle(Color.fg.opacity(0.25))
+                        .lineSpacing(4)
+
+                    VStack(alignment: .leading, spacing: 10) {
+                        HStack(spacing: 10) {
+                            Circle()
+                                .fill(calendarStatusColor)
+                                .frame(width: 8, height: 8)
+
+                            Text(calendarStatusText)
+                                .font(.custom("Switzer-Regular", size: 13))
+                                .foregroundStyle(Color.fg.opacity(0.6))
+                        }
+
+                        HStack(spacing: 12) {
+                            Button {
+                                Task {
+                                    let granted = await appleCalendarManager.requestAccess()
+                                    if granted, ensureProfile().appleCalendarSyncEnabled {
+                                        syncTimedIdeasToAppleCalendar()
+                                    }
+                                }
+                            } label: {
+                                HStack(spacing: 6) {
+                                    Image(systemName: appleCalendarManager.hasFullAccess ? "arrow.clockwise" : "link")
+                                        .font(.system(size: 11))
+                                    Text(appleCalendarManager.hasFullAccess ? "refresh calendar access" : "connect to apple calendar")
+                                        .font(.custom("Switzer-Medium", size: 13))
+                                }
+                                .foregroundStyle(Color.fg.opacity(0.6))
+                                .padding(.horizontal, 14)
+                                .padding(.vertical, 8)
+                                .background(Color.fg.opacity(0.06))
+                                .clipShape(RoundedRectangle(cornerRadius: 6))
+                            }
+                            .buttonStyle(.plain)
+
+                            Toggle(isOn: Binding(
+                                get: { profile?.appleCalendarSyncEnabled ?? false },
+                                set: { newValue in
+                                    ensureProfile().appleCalendarSyncEnabled = newValue
+                                    try? modelContext.save()
+                                    if newValue {
+                                        if appleCalendarManager.hasFullAccess {
+                                            syncTimedIdeasToAppleCalendar()
+                                        }
+                                    }
+                                }
+                            )) {
+                                Text("sync timed ideas")
+                                    .font(.custom("Switzer-Regular", size: 12))
+                                    .foregroundStyle(Color.fg.opacity(0.6))
+                            }
+                            .toggleStyle(.switch)
+                            .controlSize(.small)
+                            .disabled(!appleCalendarManager.hasFullAccess)
+                        }
+
+                        if let error = appleCalendarManager.lastErrorMessage, !error.isEmpty {
+                            Text(error)
+                                .font(.custom("Switzer-Regular", size: 12))
+                                .foregroundStyle(Color.red.opacity(0.7))
+                        }
+                    }
+
+                    Rectangle()
+                        .fill(Color.fg.opacity(0.06))
+                        .frame(height: 1)
+                        .padding(.vertical, 8)
+
                     // API Key section
                     sectionHeader("ai chat")
 
@@ -223,6 +300,7 @@ struct SettingsView: View {
                 tags = profile?.verifiedTags ?? []
                 tagColors = profile?.tagColors ?? [:]
                 apiKeyText = profile?.openaiAPIKey ?? ""
+                appleCalendarManager.refreshAuthorizationStatus()
                 didLoad = true
             }
         }
@@ -243,6 +321,44 @@ struct SettingsView: View {
             .foregroundStyle(Color.fg.opacity(0.3))
             .textCase(.uppercase)
             .tracking(1.5)
+    }
+
+    private var calendarStatusColor: Color {
+        if appleCalendarManager.hasFullAccess {
+            return Color.green.opacity(0.8)
+        }
+
+        switch appleCalendarManager.authorizationStatus {
+        case .fullAccess:
+            return Color.green.opacity(0.8)
+        case .denied, .restricted:
+            return Color.red.opacity(0.8)
+        case .notDetermined, .writeOnly:
+            return Color.orange.opacity(0.8)
+        @unknown default:
+            return Color.fg.opacity(0.4)
+        }
+    }
+
+    private var calendarStatusText: String {
+        if appleCalendarManager.hasFullAccess {
+            return "connected"
+        }
+
+        switch appleCalendarManager.authorizationStatus {
+        case .fullAccess:
+            return "connected"
+        case .denied:
+            return "access denied"
+        case .restricted:
+            return "access restricted"
+        case .notDetermined:
+            return "not connected"
+        case .writeOnly:
+            return "write-only access"
+        @unknown default:
+            return "unknown status"
+        }
     }
 
     @discardableResult
@@ -302,6 +418,14 @@ struct SettingsView: View {
         } catch {
             errorMessage = "failed to generate tags: \(error.localizedDescription)"
         }
+    }
+
+    private func syncTimedIdeasToAppleCalendar() {
+        let timedIdeas = ideas.filter { $0.dueDate != nil && $0.dueTime != nil && $0.modelContext != nil }
+        for idea in timedIdeas {
+            AppleCalendarManager.shared.syncIdea(idea, enabled: true)
+        }
+        try? modelContext.save()
     }
 }
 

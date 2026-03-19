@@ -23,7 +23,9 @@ class Idea {
     // Scheduling
     var dueDate: Date? = nil
     var dueTime: String? = nil          // "HH:mm" or nil for all-day
+    var durationMinutes: Int? = nil     // Timed event duration; nil defaults to 60 minutes
     var recurringPattern: String? = nil  // "daily"|"weekly"|"monthly"|"weekdays"|"yearly"
+    var appleCalendarEventIdentifier: String? = nil
 
     // Rich text notes (encoded AttributedString)
     var notesData: Data = Data()
@@ -57,7 +59,9 @@ class Idea {
         self.priority = 0
         self.dueDate = nil
         self.dueTime = nil
+        self.durationMinutes = nil
         self.recurringPattern = nil
+        self.appleCalendarEventIdentifier = nil
         self.folder = nil
         self.positionX = 0
         self.positionY = 0
@@ -228,6 +232,10 @@ class Idea {
             return Calendar.current.startOfDay(for: dueDate)
         }
         return Calendar.current.date(bySettingHour: hour, minute: minute, second: 0, of: dueDate)
+    }
+
+    var scheduledDurationMinutes: Int {
+        max(durationMinutes ?? 60, 15)
     }
 
     enum DueStatus {

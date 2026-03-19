@@ -30,12 +30,13 @@ extension EnvironmentValues {
 }
 
 enum Page: String, CaseIterable {
-    case ideas, graph, chat, focus, settings
+    case ideas, graph, calendar, chat, focus, settings
 
     var label: String {
         switch self {
         case .ideas: "ideas"
         case .graph: "graph"
+        case .calendar: "calendar"
         case .chat: "ai chat"
         case .focus: "focus"
         case .settings: "settings"
@@ -46,6 +47,7 @@ enum Page: String, CaseIterable {
         switch self {
         case .ideas: "square.and.pencil"
         case .graph: "circle.grid.cross"
+        case .calendar: "calendar"
         case .chat: "bubble.left"
         case .focus: "scope"
         case .settings: "gearshape"
@@ -205,6 +207,7 @@ struct ContentView: View {
                         selectedIdea = nil
                     }
                     withAnimation(.easeOut(duration: 0.2)) {
+                        AppleCalendarManager.shared.removeSyncedEvent(for: idea)
                         modelContext.delete(idea)
                         try? modelContext.save()
                     }
@@ -219,7 +222,7 @@ struct ContentView: View {
         #else
         NavigationSplitView {
             List(selection: $selectedPage) {
-                ForEach([Page.ideas, .graph, .chat, .focus], id: \.self) { page in
+                ForEach([Page.ideas, .graph, .calendar, .chat, .focus], id: \.self) { page in
                     NavigationLink(value: page) {
                         Label(page.label, systemImage: page.icon)
                     }
@@ -287,7 +290,7 @@ struct ContentView: View {
 
             // Navigation
             VStack(spacing: 2) {
-                ForEach([Page.ideas, .graph, .chat, .focus], id: \.self) { page in
+                ForEach([Page.ideas, .graph, .calendar, .chat, .focus], id: \.self) { page in
                     navItem(page: page)
                 }
             }
@@ -353,6 +356,13 @@ struct ContentView: View {
             ideasPage
         case .graph:
             GraphView()
+        case .calendar:
+            CalendarView(ideasViewModel: viewModel) { idea in
+                withAnimation(.easeOut(duration: 0.25)) {
+                    selectedIdea = idea
+                }
+            }
+            .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
         case .chat:
             ChatView(ideasViewModel: viewModel)
         case .focus:
@@ -405,14 +415,7 @@ struct ContentView: View {
                     ideasBoardContent
                 }
 
-                aiResponseCard
-
                 ideasInputBar
-                    .overlay(alignment: .top) {
-                        Rectangle()
-                            .fill(Color.fg.opacity(0.06))
-                            .frame(height: 1)
-                    }
             }
             .frame(maxWidth: .infinity, maxHeight: .infinity)
 
@@ -533,29 +536,135 @@ struct ContentView: View {
     }
     #endif
 
-    // macOS input bar — dark background, inline
+    // macOS input bar — pill-shaped with tab switcher + integrated response card
     private var ideasInputBar: some View {
-        HStack(spacing: 0) {
-            ideasModeToggle
-                .padding(.leading, 16)
+        let responseText = chatViewModel?.silentResponseText ?? ""
+        let activity = chatViewModel?.toolActivity
+        let showResponse = isAiProcessing || !responseText.isEmpty
 
-            TextField(aiInputMode ? "ask ai to do something..." : "what's on your mind...", text: $inputText)
-                .textFieldStyle(.plain)
-                .font(.custom("Switzer-Regular", size: 15))
-                .foregroundStyle(Color.fg.opacity(0.9))
-                .padding(.horizontal, 12)
-                .padding(.vertical, 16)
-                .focused($isInputFocused)
-                .onSubmit { handleIdeasSubmit() }
+        return VStack(spacing: 0) {
+            // AI response card — connected above the input pill
+            if showResponse {
+                VStack(alignment: .leading, spacing: 6) {
+                    if let activity, isAiProcessing {
+                        HStack(spacing: 6) {
+                            ProgressView()
+                                .scaleEffect(0.5)
+                                .frame(width: 12, height: 12)
+                            Text(activity)
+                                .font(.custom("Switzer-Light", size: 11))
+                                .foregroundStyle(Color.fg.opacity(0.35))
+                        }
+                    }
 
-            if isAiProcessing {
-                ProgressView()
-                    .scaleEffect(0.5)
-                    .frame(width: 20, height: 20)
-                    .padding(.trailing, 16)
+                    if !responseText.isEmpty {
+                        Text(responseText)
+                            .font(.custom("Switzer-Regular", size: 13))
+                            .foregroundStyle(Color.fg.opacity(0.75))
+                            .lineSpacing(3)
+                            .textSelection(.enabled)
+                    }
+                }
+                .padding(.horizontal, 16)
+                .padding(.vertical, 10)
+                .frame(maxWidth: .infinity, alignment: .leading)
+                .background(
+                    UnevenRoundedRectangle(topLeadingRadius: 18, bottomLeadingRadius: 0, bottomTrailingRadius: 0, topTrailingRadius: 18)
+                        .fill(Color.fg.opacity(0.04))
+                )
+                .transition(.opacity.combined(with: .move(edge: .bottom)))
             }
+
+            // Input row
+            HStack(spacing: 10) {
+                // Mode tabs
+                HStack(spacing: 0) {
+                    inputModeTab(label: "idea", icon: "pencil.line", isActive: !aiInputMode) {
+                        withAnimation(.easeInOut(duration: 0.2)) { aiInputMode = false }
+                    }
+                    inputModeTab(label: "ai", icon: "sparkles", isActive: aiInputMode) {
+                        withAnimation(.easeInOut(duration: 0.2)) { aiInputMode = true }
+                    }
+                }
+                .padding(3)
+                .background(
+                    Capsule()
+                        .fill(Color.fg.opacity(0.06))
+                )
+
+                // Text field
+                TextField(aiInputMode ? "ask ai to do something..." : "what's on your mind...", text: $inputText)
+                    .textFieldStyle(.plain)
+                    .font(.custom("Switzer-Regular", size: 14))
+                    .foregroundStyle(Color.fg.opacity(0.9))
+                    .focused($isInputFocused)
+                    .onSubmit { handleIdeasSubmit() }
+
+                if isAiProcessing {
+                    ProgressView()
+                        .scaleEffect(0.5)
+                        .frame(width: 16, height: 16)
+                }
+
+                // Submit button
+                Button { handleIdeasSubmit() } label: {
+                    Image(systemName: "arrow.up")
+                        .font(.system(size: 12, weight: .semibold))
+                        .foregroundStyle(inputText.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
+                            ? Color.fg.opacity(0.15)
+                            : aiInputMode
+                                ? Color(red: 0.6, green: 0.5, blue: 1.0)
+                                : Color.fg.opacity(0.7))
+                        .frame(width: 28, height: 28)
+                        .background(
+                            Circle()
+                                .fill(inputText.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
+                                    ? Color.fg.opacity(0.04)
+                                    : aiInputMode
+                                        ? Color(red: 0.6, green: 0.5, blue: 1.0).opacity(0.12)
+                                        : Color.fg.opacity(0.08))
+                        )
+                }
+                .buttonStyle(.plain)
+                .disabled(inputText.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
+            }
+            .padding(.horizontal, 14)
+            .padding(.vertical, 10)
         }
-        .background(Color.bgBase)
+        .background(
+            RoundedRectangle(cornerRadius: showResponse ? 18 : 100)
+                .fill(Color.bgElevated)
+                .stroke(Color.fg.opacity(0.08), lineWidth: 1)
+                .animation(.easeInOut(duration: 0.2), value: showResponse)
+        )
+        .padding(.horizontal, 24)
+        .padding(.vertical, 12)
+    }
+
+    private func inputModeTab(label: String, icon: String, isActive: Bool, action: @escaping () -> Void) -> some View {
+        let aiPurple = Color(red: 0.6, green: 0.5, blue: 1.0)
+        let isAi = label == "ai"
+
+        return Button(action: action) {
+            HStack(spacing: 5) {
+                Image(systemName: icon)
+                    .font(.system(size: 10))
+                Text(label)
+                    .font(.custom("Switzer-Medium", size: 11))
+            }
+            .foregroundStyle(isActive
+                ? (isAi ? aiPurple : Color.fg.opacity(0.8))
+                : Color.fg.opacity(0.3))
+            .padding(.horizontal, 10)
+            .padding(.vertical, 5)
+            .background(
+                Capsule()
+                    .fill(isActive
+                        ? (isAi ? aiPurple.opacity(0.12) : Color.fg.opacity(0.08))
+                        : Color.clear)
+            )
+        }
+        .buttonStyle(.plain)
     }
 
 
@@ -592,10 +701,6 @@ struct ContentView: View {
                 RoundedRectangle(cornerRadius: 10)
                     .fill(Color.fg.opacity(0.05))
             )
-            #if os(macOS)
-            .padding(.horizontal, 24)
-            .padding(.vertical, 8)
-            #endif
             .transition(.opacity.combined(with: .move(edge: .bottom)))
         }
     }
@@ -1505,6 +1610,7 @@ struct IdeaRow: View {
 
 struct DatePickerPopover: View {
     @Bindable var idea: Idea
+    @Query private var profiles: [UserProfile]
     @Environment(\.dismiss) private var dismiss
 
     @State private var selectedDate: Date
@@ -1576,8 +1682,10 @@ struct DatePickerPopover: View {
             // Actions
             HStack {
                 Button("clear") {
+                    AppleCalendarManager.shared.removeSyncedEvent(for: idea)
                     idea.dueDate = nil
                     idea.dueTime = nil
+                    idea.durationMinutes = nil
                     idea.recurringPattern = nil
                     dismiss()
                 }
@@ -1590,7 +1698,14 @@ struct DatePickerPopover: View {
                 Button("save") {
                     idea.dueDate = Calendar.current.startOfDay(for: selectedDate)
                     idea.dueTime = hasTime ? timeString : nil
+                    if hasTime, idea.durationMinutes == nil {
+                        idea.durationMinutes = 60
+                    }
+                    if !hasTime {
+                        idea.durationMinutes = nil
+                    }
                     idea.recurring = selectedRecurring
+                    AppleCalendarManager.shared.syncIdea(idea, enabled: profiles.first?.appleCalendarSyncEnabled ?? false)
                     dismiss()
                 }
                 .font(.custom("Switzer-Semibold", size: 12))

@@ -8,12 +8,14 @@ class UserProfile {
     var verifiedTags: [String]
     var openaiAPIKey: String
     var tagColors: [String: String] = [:]  // tag name → hex color string
+    var appleCalendarSyncEnabled: Bool
 
     init() {
         self.bio = ""
         self.verifiedTags = []
         self.openaiAPIKey = ""
         self.tagColors = [:]
+        self.appleCalendarSyncEnabled = false
     }
 
     var hasProfile: Bool {

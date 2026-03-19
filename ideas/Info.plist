@@ -2,9 +2,28 @@
 <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
 <plist version="1.0">
 <dict>
+	<key>NSCalendarsFullAccessUsageDescription</key>
+	<string>ideas uses Apple Calendar to show your events beside ideas and sync timed ideas when you enable calendar integration.</string>
+	<key>NSCalendarsUsageDescription</key>
+	<string>ideas uses Apple Calendar to show your events beside ideas and sync timed ideas when you enable calendar integration.</string>
 	<key>SUFeedURL</key>
 	<string>https://raw.githubusercontent.com/pranavjana/ideas/main/appcast.xml</string>
 	<key>SUPublicEDKey</key>
 	<string>UjBmrjyTMO4MEM3Em3Ce0VT6R7LXzRnZaNfSiGOyR0o=</string>
+	<key>UTExportedTypeDeclarations</key>
+	<array>
+		<dict>
+			<key>UTTypeConformsTo</key>
+			<array>
+				<string>public.data</string>
+			</array>
+			<key>UTTypeDescription</key>
+			<string>Idea Transfer</string>
+			<key>UTTypeIdentifier</key>
+			<string>com.ideas.ideatransfer</string>
+			<key>UTTypeTagSpecification</key>
+			<dict/>
+		</dict>
+	</array>
 </dict>
 </plist>
