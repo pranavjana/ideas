@@ -2,8 +2,9 @@ import Foundation
 import SwiftUI
 import SwiftData
 
+extension AppSchemaV2 {
 @Model
-class Idea {
+final class Idea {
     var text: String
     var tags: [String]
     var category: String
@@ -303,6 +304,7 @@ class Idea {
             return cal.date(byAdding: .year, value: 1, to: dueDate)
         }
     }
+}
 }
 
 extension Idea {

@@ -2,18 +2,17 @@ import Foundation
 import SwiftUI
 import SwiftData
 
+extension AppSchemaV2 {
 @Model
-class UserProfile {
+final class UserProfile {
     var bio: String
     var verifiedTags: [String]
-    var openaiAPIKey: String
     var tagColors: [String: String] = [:]  // tag name → hex color string
     var appleCalendarSyncEnabled: Bool
 
     init() {
         self.bio = ""
         self.verifiedTags = []
-        self.openaiAPIKey = ""
         self.tagColors = [:]
         self.appleCalendarSyncEnabled = false
     }
@@ -34,6 +33,7 @@ class UserProfile {
             tagColors.removeValue(forKey: tag)
         }
     }
+}
 }
 
 // MARK: - Color ↔ Hex

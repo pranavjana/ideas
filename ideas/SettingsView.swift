@@ -265,7 +265,7 @@ struct SettingsView: View {
                     // API Key section
                     sectionHeader("ai chat")
 
-                    Text("enter your openrouter api key to use the chat feature. get one at openrouter.ai. stored locally.")
+                    Text("enter your ai api key to use ai features. openrouter keys work here. stored securely in the keychain.")
                         .font(.custom("Switzer-Light", size: 12))
                         .foregroundStyle(Color.fg.opacity(0.25))
                         .lineSpacing(4)
@@ -278,8 +278,7 @@ struct SettingsView: View {
                         .background(Color.fg.opacity(0.04))
                         .clipShape(RoundedRectangle(cornerRadius: 8))
                         .onChange(of: apiKeyText) {
-                            ensureProfile().openaiAPIKey = apiKeyText
-                            try? modelContext.save()
+                            _ = AIProviderKeychain.setAPIKey(apiKeyText)
                         }
                 }
                 #if os(macOS)
@@ -299,7 +298,7 @@ struct SettingsView: View {
                 bioText = profile?.bio ?? ""
                 tags = profile?.verifiedTags ?? []
                 tagColors = profile?.tagColors ?? [:]
-                apiKeyText = profile?.openaiAPIKey ?? ""
+                apiKeyText = AIProviderKeychain.apiKey()
                 appleCalendarManager.refreshAuthorizationStatus()
                 didLoad = true
             }
@@ -389,7 +388,7 @@ struct SettingsView: View {
         defer { isGenerating = false }
 
         guard !apiKeyText.isEmpty else {
-            errorMessage = "add your openrouter api key first"
+            errorMessage = "add your ai api key first"
             return
         }
 

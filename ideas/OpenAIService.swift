@@ -238,7 +238,7 @@ enum OpenAIError: LocalizedError {
             if code == 429 { return "rate limited — try again in a moment" }
             return "api error (\(code)): \(message)"
         case .noAPIKey:
-            return "add your openrouter api key in settings"
+            return "add your ai api key in settings"
         }
     }
 }

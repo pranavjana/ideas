@@ -64,12 +64,23 @@ class IdeasViewModel {
         return (try? modelContext.fetch(descriptor))?.first
     }
 
+    private func fetchAPIKey() -> String {
+        AIProviderKeychain.apiKey()
+    }
+
     // MARK: - Tagging
 
     /// Tags an idea via the API, then automatically refreshes its connections.
     func tagIdea(_ idea: Idea) async {
-        guard let profile = fetchProfile(),
-              !profile.openaiAPIKey.isEmpty else {
+        guard let profile = fetchProfile() else {
+            withAnimation(.easeOut(duration: 0.3)) {
+                idea.isProcessing = false
+            }
+            return
+        }
+
+        let apiKey = fetchAPIKey()
+        guard !apiKey.isEmpty else {
             withAnimation(.easeOut(duration: 0.3)) {
                 idea.isProcessing = false
             }
@@ -110,7 +121,7 @@ class IdeasViewModel {
 
         do {
             let result = try await OpenAIService.jsonCompletion(
-                apiKey: profile.openaiAPIKey,
+                apiKey: apiKey,
                 messages: [
                     .init(role: "system", content: systemPrompt),
                     .init(role: "user", content: idea.text)
@@ -151,8 +162,10 @@ class IdeasViewModel {
     }
 
     private func findConnections(for newIdea: Idea) async {
-        guard let profile = fetchProfile(),
-              !profile.openaiAPIKey.isEmpty else { return }
+        guard let profile = fetchProfile() else { return }
+
+        let apiKey = fetchAPIKey()
+        guard !apiKey.isEmpty else { return }
 
         let descriptor = FetchDescriptor<Idea>()
         guard let allIdeas = try? modelContext.fetch(descriptor) else { return }
@@ -183,7 +196,7 @@ class IdeasViewModel {
 
         do {
             let result = try await OpenAIService.jsonCompletion(
-                apiKey: profile.openaiAPIKey,
+                apiKey: apiKey,
                 messages: [
                     .init(role: "system", content: systemPrompt),
                     .init(role: "user", content: userPrompt)

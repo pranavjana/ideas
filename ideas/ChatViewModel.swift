@@ -23,7 +23,7 @@ class ChatViewModel {
         guard !trimmed.isEmpty else { return }
 
         guard let apiKey = fetchAPIKey(), !apiKey.isEmpty else {
-            errorMessage = "add your openrouter api key in settings"
+            errorMessage = "add your ai api key in settings"
             return
         }
 
@@ -53,7 +53,7 @@ class ChatViewModel {
         guard !trimmed.isEmpty else { return nil }
 
         guard let apiKey = fetchAPIKey(), !apiKey.isEmpty else {
-            errorMessage = "add your openrouter api key in settings"
+            errorMessage = "add your ai api key in settings"
             return nil
         }
 
@@ -327,8 +327,8 @@ class ChatViewModel {
     // MARK: - Private Helpers
 
     private func fetchAPIKey() -> String? {
-        let descriptor = FetchDescriptor<UserProfile>()
-        return (try? modelContext.fetch(descriptor))?.first?.openaiAPIKey
+        let apiKey = AIProviderKeychain.apiKey()
+        return apiKey.isEmpty ? nil : apiKey
     }
 
     private func buildSystemPrompt() -> String {

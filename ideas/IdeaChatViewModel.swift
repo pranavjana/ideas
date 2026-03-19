@@ -76,7 +76,7 @@ class IdeaChatViewModel {
     func kickstartIfNeeded(model: String) async {
         guard messages.isEmpty else { return }
         guard let apiKey = fetchAPIKey(), !apiKey.isEmpty else {
-            errorMessage = "add your openrouter api key in settings"
+            errorMessage = "add your ai api key in settings"
             return
         }
 
@@ -118,7 +118,7 @@ class IdeaChatViewModel {
         guard !trimmed.isEmpty else { return }
 
         guard let apiKey = fetchAPIKey(), !apiKey.isEmpty else {
-            errorMessage = "add your openrouter api key in settings"
+            errorMessage = "add your ai api key in settings"
             return
         }
 
@@ -380,8 +380,8 @@ class IdeaChatViewModel {
     // MARK: - Helpers
 
     private func fetchAPIKey() -> String? {
-        let descriptor = FetchDescriptor<UserProfile>()
-        return (try? modelContext.fetch(descriptor))?.first?.openaiAPIKey
+        let apiKey = AIProviderKeychain.apiKey()
+        return apiKey.isEmpty ? nil : apiKey
     }
 
     // MARK: - Tool Definitions (3 CRUD tools scoped to this idea)

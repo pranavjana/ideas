@@ -2,8 +2,9 @@ import Foundation
 import SwiftUI
 import SwiftData
 
+extension AppSchemaV2 {
 @Model
-class Folder {
+final class Folder {
     var name: String
     var icon: String          // SF Symbol name
     var colorHex: String      // hex color for the folder
@@ -72,4 +73,5 @@ class Folder {
             return $0.name.localizedCaseInsensitiveCompare($1.name) == .orderedAscending
         }
     }
+}
 }
