@@ -10,12 +10,10 @@ struct SettingsView: View {
     #if os(macOS)
     @StateObject private var updaterViewModel = UpdaterViewModel()
     #endif
-    @State private var isGenerating = false
     @State private var newTag = ""
     @State private var bioText = ""
     @State private var tags: [String] = []
     @State private var tagColors: [String: String] = [:]
-    @State private var errorMessage: String?
     @State private var apiKeyText = ""
     @State private var didLoad = false
 
@@ -56,48 +54,14 @@ struct SettingsView: View {
                             try? modelContext.save()
                         }
 
-                    // Generate tags
-                    HStack {
-                        Button {
-                            Task { await generateTags() }
-                        } label: {
-                            HStack(spacing: 6) {
-                                if isGenerating {
-                                    ProgressView()
-                                        .scaleEffect(0.6)
-                                        .frame(width: 12, height: 12)
-                                } else {
-                                    Image(systemName: "sparkles")
-                                        .font(.system(size: 11))
-                                }
-                                Text(isGenerating ? "generating..." : "generate tags")
-                                    .font(.custom("Switzer-Medium", size: 13))
-                            }
-                            .foregroundStyle(Color.fg.opacity(!bioText.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty ? 0.6 : 0.2))
-                            .padding(.horizontal, 14)
-                            .padding(.vertical, 8)
-                            .background(Color.fg.opacity(0.06))
-                            .clipShape(RoundedRectangle(cornerRadius: 6))
-                        }
-                        .buttonStyle(.plain)
-                        .disabled(bioText.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty || isGenerating)
-                    }
-
-                    // Error message
-                    if let error = errorMessage {
-                        Text(error)
-                            .font(.custom("Switzer-Regular", size: 12))
-                            .foregroundStyle(Color.red.opacity(0.7))
-                    }
-
                     // Tags section
+                    sectionHeader("your tags")
+
+                    Text("add your own tags manually. click the color dot to assign a color to each tag.")
+                        .font(.custom("Switzer-Light", size: 12))
+                        .foregroundStyle(Color.fg.opacity(0.25))
+
                     if !tags.isEmpty {
-                        sectionHeader("your tags")
-
-                        Text("click the color dot to assign a color to each tag.")
-                            .font(.custom("Switzer-Light", size: 12))
-                            .foregroundStyle(Color.fg.opacity(0.25))
-
                         VStack(alignment: .leading, spacing: 6) {
                             ForEach(tags, id: \.self) { tag in
                                 TagColorRow(
@@ -125,28 +89,27 @@ struct SettingsView: View {
                                 )
                             }
                         }
-
-                        // Add custom tag
-                        HStack(spacing: 8) {
-                            TextField("add tag...", text: $newTag)
-                                .textFieldStyle(.plain)
-                                .font(.custom("Switzer-Regular", size: 13))
-                                .foregroundStyle(Color.fg.opacity(0.7))
-                                .onSubmit {
-                                    addCustomTag()
-                                }
-
-                            if !newTag.isEmpty {
-                                Button("add") {
-                                    addCustomTag()
-                                }
-                                .buttonStyle(.plain)
-                                .font(.custom("Switzer-Regular", size: 12))
-                                .foregroundStyle(Color.fg.opacity(0.4))
-                            }
-                        }
-                        .padding(.top, 4)
                     }
+
+                    HStack(spacing: 8) {
+                        TextField("add tag...", text: $newTag)
+                            .textFieldStyle(.plain)
+                            .font(.custom("Switzer-Regular", size: 13))
+                            .foregroundStyle(Color.fg.opacity(0.7))
+                            .onSubmit {
+                                addCustomTag()
+                            }
+
+                        if !newTag.isEmpty {
+                            Button("add") {
+                                addCustomTag()
+                            }
+                            .buttonStyle(.plain)
+                            .font(.custom("Switzer-Regular", size: 12))
+                            .foregroundStyle(Color.fg.opacity(0.4))
+                        }
+                    }
+                    .padding(.top, 4)
 
                     // Divider
                     Rectangle()
@@ -380,43 +343,6 @@ struct SettingsView: View {
             tags.append(tag)
         }
         newTag = ""
-    }
-
-    private func generateTags() async {
-        isGenerating = true
-        errorMessage = nil
-        defer { isGenerating = false }
-
-        guard !apiKeyText.isEmpty else {
-            errorMessage = "add your ai api key first"
-            return
-        }
-
-        let systemPrompt = """
-        Generate 10-15 relevant tags for someone based on their self-description. \
-        Tags should be short, lowercase, and useful for categorizing ideas and projects. \
-        Respond with JSON: {"tags": ["tag1", "tag2", ...]}
-        """
-
-        do {
-            let result = try await OpenAIService.jsonCompletion(
-                apiKey: apiKeyText,
-                messages: [
-                    .init(role: "system", content: systemPrompt),
-                    .init(role: "user", content: bioText)
-                ]
-            )
-
-            if let generatedTags = result["tags"] as? [String] {
-                withAnimation(.easeOut(duration: 0.3)) {
-                    tags = generatedTags.map { $0.lowercased() }
-                }
-            } else {
-                errorMessage = "unexpected response format"
-            }
-        } catch {
-            errorMessage = "failed to generate tags: \(error.localizedDescription)"
-        }
     }
 
     private func syncTimedIdeasToAppleCalendar() {
