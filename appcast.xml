@@ -5,12 +5,12 @@
         <description>ideas app updates</description>
         <language>en</language>
         <item>
-            <title>v0.1.0-alpha</title>
-            <pubDate>Mon, 09 Mar 2026 03:40:55 +0000</pubDate>
-            <sparkle:version>0.1.0-alpha</sparkle:version>
-            <sparkle:shortVersionString>0.1.0-alpha</sparkle:shortVersionString>
+            <title>v0.2.0-alpha</title>
+            <pubDate>Thu, 19 Mar 2026 14:46:57 +0000</pubDate>
+            <sparkle:version>0.2.0-alpha</sparkle:version>
+            <sparkle:shortVersionString>0.2.0-alpha</sparkle:shortVersionString>
             <sparkle:minimumSystemVersion>15.0</sparkle:minimumSystemVersion>
-            <enclosure url="https://github.com/pranavjana/ideas/releases/download/v0.1.0-alpha/ideas-0.1.0-alpha.zip" length="9713632" type="application/octet-stream" />
+            <enclosure url="https://github.com/pranavjana/ideas/releases/download/v0.2.0-alpha/ideas-0.2.0-alpha.zip" length="10056090" type="application/octet-stream" />
         </item>
     </channel>
 </rss>
