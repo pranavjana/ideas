@@ -8,11 +8,8 @@ struct AIModel: Identifiable, Hashable {
 
     static let available: [AIModel] = [
         AIModel(id: "anthropic/claude-haiku-4.5", name: "claude haiku"),
-        AIModel(id: "openai/gpt-4o-mini", name: "gpt-4o mini"),
-        AIModel(id: "openai/gpt-4o", name: "gpt-4o"),
-        AIModel(id: "anthropic/claude-sonnet-4", name: "claude sonnet"),
-        AIModel(id: "google/gemini-2.5-flash-preview", name: "gemini flash"),
-        AIModel(id: "deepseek/deepseek-chat", name: "deepseek v3"),
+        AIModel(id: "openai/gpt-5.4-mini", name: "gpt-5.4 mini"),
+        AIModel(id: "moonshotai/kimi-k2.5", name: "kimi k2.5"),
     ]
 }
 
