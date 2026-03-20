@@ -729,11 +729,7 @@ struct CalendarView: View {
             .contentShape(Rectangle())
             .onTapGesture {
                 if let targetDate = cal.date(bySettingHour: hour, minute: minute, second: 0, of: day) {
-                    quickAddDate = targetDate
-                    quickAddText = ""
-                    showQuickAdd = true
-                    quickAddFocused = true
-                    syncQuickAddTimesFromDate()
+                    openQuickAdd(at: targetDate)
                 }
             }
     }
@@ -751,11 +747,7 @@ struct CalendarView: View {
                               let targetDate = cal.date(bySettingHour: slot.hour, minute: slot.minute, second: 0, of: slot.date)
                         else { return }
 
-                        quickAddDate = targetDate
-                        quickAddText = ""
-                        showQuickAdd = true
-                        quickAddFocused = true
-                        syncQuickAddTimesFromDate()
+                        openQuickAdd(at: targetDate)
                     }
             )
             #if os(macOS)
@@ -898,7 +890,7 @@ struct CalendarView: View {
         GeometryReader { geo in
             guard let drag = activeAppleEventDrag,
                   let event = appleCalendarManager.visibleEvents.first(where: { $0.id == drag.eventIdentity }),
-                  let slot = appleEventDropSlot(
+                  let slot = draggedTimeSlot(
                     translation: drag.translation,
                     originDayIndex: drag.originDayIndex,
                     originStartMinutes: drag.originStartMinutes,
@@ -947,6 +939,28 @@ struct CalendarView: View {
 
     // MARK: - Event Blocks
 
+    private func overlapLayoutForDay(day: Date) -> [String: EventLayout] {
+        let timedIdeas = ideasForDate(day)
+            .filter { $0.dueTime != nil }
+        let appleEventsForDay = appleCalendarManager.visibleEvents.filter { !$0.isAllDay && cal.isDate($0.startDate, inSameDayAs: day) }
+
+        let ideaSpans: [EventSpan] = timedIdeas.compactMap { idea in
+            guard let timeStr = idea.dueTime, timeStr.count == 5,
+                  let h = Int(timeStr.prefix(2)), let m = Int(timeStr.suffix(2)) else { return nil }
+            let start = h * 60 + m
+            return EventSpan(id: "idea-\(idea.persistentModelID)", startMinutes: start, endMinutes: start + idea.scheduledDurationMinutes)
+        }
+        let appleSpans: [EventSpan] = appleEventsForDay.map { event in
+            let h = cal.component(.hour, from: event.startDate)
+            let m = cal.component(.minute, from: event.startDate)
+            let start = h * 60 + m
+            let dur = max(Int(event.endDate.timeIntervalSince(event.startDate) / 60), minuteIncrement)
+            return EventSpan(id: "apple-\(event.id)", startMinutes: start, endMinutes: start + dur)
+        }
+
+        return computeOverlapLayout(spans: ideaSpans + appleSpans)
+    }
+
     private func eventBlocks(days: [Date]) -> some View {
         GeometryReader { geo in
             let totalWidth = geo.size.width - timeGutterWidth
@@ -957,25 +971,7 @@ struct CalendarView: View {
                     .filter { $0.dueTime != nil }
                     .sorted { ($0.dueTime ?? "") < ($1.dueTime ?? "") }
 
-                // Gather all events for this day (ideas + apple calendar) for overlap layout
-                let appleEventsForDay = appleCalendarManager.visibleEvents.filter { !$0.isAllDay && cal.isDate($0.startDate, inSameDayAs: day) }
-
-                let ideaSpans: [EventSpan] = timedIdeas.compactMap { idea in
-                    guard let timeStr = idea.dueTime, timeStr.count == 5,
-                          let h = Int(timeStr.prefix(2)), let m = Int(timeStr.suffix(2)) else { return nil }
-                    let start = h * 60 + m
-                    let end = start + idea.scheduledDurationMinutes
-                    return EventSpan(id: "idea-\(idea.persistentModelID)", startMinutes: start, endMinutes: end)
-                }
-                let appleSpans: [EventSpan] = appleEventsForDay.map { event in
-                    let h = cal.component(.hour, from: event.startDate)
-                    let m = cal.component(.minute, from: event.startDate)
-                    let start = h * 60 + m
-                    let dur = max(Int(event.endDate.timeIntervalSince(event.startDate) / 60), minuteIncrement)
-                    return EventSpan(id: "apple-\(event.id)", startMinutes: start, endMinutes: start + dur)
-                }
-
-                let layout = computeOverlapLayout(spans: ideaSpans + appleSpans)
+                let layout = overlapLayoutForDay(day: day)
 
                 ForEach(timedIdeas) { idea in
                     let key = "idea-\(idea.persistentModelID)"
@@ -992,25 +988,9 @@ struct CalendarView: View {
             let columnWidth = dayColumnWidth(totalWidth: totalWidth, dayCount: days.count)
 
             ForEach(Array(days.enumerated()), id: \.offset) { idx, day in
-                let timedIdeas = ideasForDate(day)
-                    .filter { $0.dueTime != nil }
                 let appleEventsForDay = appleCalendarManager.visibleEvents.filter { !$0.isAllDay && cal.isDate($0.startDate, inSameDayAs: day) }
 
-                let ideaSpans: [EventSpan] = timedIdeas.compactMap { idea in
-                    guard let timeStr = idea.dueTime, timeStr.count == 5,
-                          let h = Int(timeStr.prefix(2)), let m = Int(timeStr.suffix(2)) else { return nil }
-                    let start = h * 60 + m
-                    return EventSpan(id: "idea-\(idea.persistentModelID)", startMinutes: start, endMinutes: start + idea.scheduledDurationMinutes)
-                }
-                let appleSpans: [EventSpan] = appleEventsForDay.map { event in
-                    let h = cal.component(.hour, from: event.startDate)
-                    let m = cal.component(.minute, from: event.startDate)
-                    let start = h * 60 + m
-                    let dur = max(Int(event.endDate.timeIntervalSince(event.startDate) / 60), minuteIncrement)
-                    return EventSpan(id: "apple-\(event.id)", startMinutes: start, endMinutes: start + dur)
-                }
-
-                let layout = computeOverlapLayout(spans: ideaSpans + appleSpans)
+                let layout = overlapLayoutForDay(day: day)
 
                 ForEach(appleEventsForDay) { event in
                     let key = "apple-\(event.id)"
@@ -1166,7 +1146,7 @@ struct CalendarView: View {
         }
     }
 
-    private func resizeHandle(for idea: Idea, isVisible: Bool) -> some View {
+    private func resizeHandleView(isVisible: Bool) -> some View {
         ZStack {
             Color.clear.frame(height: 12)
 
@@ -1186,30 +1166,16 @@ struct CalendarView: View {
             }
         }
         #endif
-        .highPriorityGesture(resizeGesture(for: idea))
+    }
+
+    private func resizeHandle(for idea: Idea, isVisible: Bool) -> some View {
+        resizeHandleView(isVisible: isVisible)
+            .highPriorityGesture(resizeGesture(for: idea))
     }
 
     private func appleCalendarResizeHandle(for event: AppleCalendarEvent, isVisible: Bool) -> some View {
-        ZStack {
-            Color.clear.frame(height: 12)
-
-            Capsule()
-                .fill(Color.fg.opacity(isVisible ? 0.3 : 0.12))
-                .frame(width: 40, height: 4)
-                .padding(.bottom, 3)
-        }
-        .frame(maxWidth: .infinity)
-        .contentShape(Rectangle())
-        #if os(macOS)
-        .onHover { hovering in
-            if hovering {
-                NSCursor.resizeUpDown.push()
-            } else {
-                NSCursor.pop()
-            }
-        }
-        #endif
-        .highPriorityGesture(appleCalendarResizeGesture(for: event))
+        resizeHandleView(isVisible: isVisible)
+            .highPriorityGesture(appleCalendarResizeGesture(for: event))
     }
 
     private func resizeGesture(for idea: Idea) -> some Gesture {
@@ -1271,6 +1237,30 @@ struct CalendarView: View {
         return (top, height)
     }
 
+    private func resizePreviewOverlay(
+        fillColor: Color, fillOpacity: Double,
+        strokeColor: Color, strokeOpacity: Double,
+        capsuleColor: Color, capsuleOpacity: Double,
+        width: CGFloat, height previewHeight: CGFloat,
+        xOffset: CGFloat, yOffset previewY: CGFloat
+    ) -> some View {
+        RoundedRectangle(cornerRadius: 4)
+            .fill(fillColor.opacity(fillOpacity))
+            .frame(width: width - eventColumnInset * 2, height: previewHeight)
+            .overlay(
+                RoundedRectangle(cornerRadius: 4)
+                    .stroke(strokeColor.opacity(strokeOpacity), style: StrokeStyle(lineWidth: 1.5, dash: [4, 3]))
+            )
+            .overlay(alignment: .bottom) {
+                Capsule()
+                    .fill(capsuleColor.opacity(capsuleOpacity))
+                    .frame(width: 40, height: 4)
+                    .padding(.bottom, 3)
+            }
+            .offset(x: xOffset + eventColumnInset, y: previewY)
+            .allowsHitTesting(false)
+    }
+
     private func resizePreview(days: [Date]) -> some View {
         GeometryReader { geo in
             guard let resizeDrag = activeResizeDrag,
@@ -1293,21 +1283,13 @@ struct CalendarView: View {
             let color = eventColor(for: idea)
 
             return AnyView(
-                RoundedRectangle(cornerRadius: 4)
-                    .fill(color.opacity(0.1))
-                    .frame(width: columnWidth - eventColumnInset * 2, height: previewHeight)
-                    .overlay(
-                        RoundedRectangle(cornerRadius: 4)
-                            .stroke(color.opacity(0.8), style: StrokeStyle(lineWidth: 1.5, dash: [4, 3]))
-                    )
-                    .overlay(alignment: .bottom) {
-                        Capsule()
-                            .fill(color.opacity(0.8))
-                            .frame(width: 40, height: 4)
-                            .padding(.bottom, 3)
-                    }
-                    .offset(x: xOffset + eventColumnInset, y: previewY)
-                    .allowsHitTesting(false)
+                resizePreviewOverlay(
+                    fillColor: color, fillOpacity: 0.1,
+                    strokeColor: color, strokeOpacity: 0.8,
+                    capsuleColor: color, capsuleOpacity: 0.8,
+                    width: columnWidth, height: previewHeight,
+                    xOffset: xOffset, yOffset: previewY
+                )
             )
         }
     }
@@ -1331,21 +1313,13 @@ struct CalendarView: View {
             let previewHeight = height(forDurationMinutes: previewDuration)
 
             return AnyView(
-                RoundedRectangle(cornerRadius: 4)
-                    .fill(Color.fg.opacity(0.08))
-                    .frame(width: columnWidth - eventColumnInset * 2, height: previewHeight)
-                    .overlay(
-                        RoundedRectangle(cornerRadius: 4)
-                            .stroke(Color.fg.opacity(0.2), style: StrokeStyle(lineWidth: 1.5, dash: [4, 3]))
-                    )
-                    .overlay(alignment: .bottom) {
-                        Capsule()
-                            .fill(Color.fg.opacity(0.8))
-                            .frame(width: 40, height: 4)
-                            .padding(.bottom, 3)
-                    }
-                    .offset(x: xOffset + eventColumnInset, y: previewY)
-                    .allowsHitTesting(false)
+                resizePreviewOverlay(
+                    fillColor: Color.fg, fillOpacity: 0.08,
+                    strokeColor: Color.fg, strokeOpacity: 0.2,
+                    capsuleColor: Color.fg, capsuleOpacity: 0.8,
+                    width: columnWidth, height: previewHeight,
+                    xOffset: xOffset, yOffset: previewY
+                )
             )
         }
     }
@@ -1431,7 +1405,7 @@ struct CalendarView: View {
                     translation: translation
                 )
 
-                if let slot = appleEventDropSlot(
+                if let slot = draggedTimeSlot(
                     translation: translation,
                     originDayIndex: originDayIndex,
                     originStartMinutes: originStartMinutes,
@@ -1446,7 +1420,7 @@ struct CalendarView: View {
             }
             .onEnded { value in
                 defer { clearDraggedState() }
-                guard let slot = appleEventDropSlot(
+                guard let slot = draggedTimeSlot(
                     translation: value.translation,
                     originDayIndex: originDayIndex,
                     originStartMinutes: originStartMinutes,
@@ -1458,24 +1432,6 @@ struct CalendarView: View {
                 }
                 moveAppleCalendarEvent(event, toDate: slot.date, hour: slot.hour, minute: slot.minute, durationMinutes: durationMinutes)
             }
-    }
-
-    private func appleEventDropSlot(
-        translation: CGSize,
-        originDayIndex: Int,
-        originStartMinutes: Int,
-        days: [Date],
-        columnWidth: CGFloat,
-        dayCount: Int
-    ) -> TimeSlot? {
-        draggedTimeSlot(
-            translation: translation,
-            originDayIndex: originDayIndex,
-            originStartMinutes: originStartMinutes,
-            days: days,
-            columnWidth: columnWidth,
-            dayCount: dayCount
-        )
     }
 
     private func draggedTimeSlot(
@@ -1503,13 +1459,12 @@ struct CalendarView: View {
         return TimeSlot(date: days[targetDayIndex], hour: hour, minute: minute)
     }
 
-    private func dragPreview(_ idea: Idea) -> some View {
-        let color = eventColor(for: idea)
-        return HStack(spacing: 6) {
+    private func eventDragPreviewView(title: String, color: Color) -> some View {
+        HStack(spacing: 6) {
             RoundedRectangle(cornerRadius: 1.5)
                 .fill(color)
                 .frame(width: 3, height: 18)
-            Text(idea.text)
+            Text(title)
                 .font(.custom("Switzer-Medium", size: 12))
                 .foregroundStyle(Color.fg.opacity(0.7))
                 .lineLimit(1)
@@ -1521,34 +1476,23 @@ struct CalendarView: View {
                 .fill(Color.bgCard)
                 .shadow(color: .black.opacity(0.15), radius: 8, y: 4)
         )
-        .onAppear {
-            draggedIdeaURI = ideaURI(idea)
-            draggedDurationMinutes = idea.scheduledDurationMinutes
-        }
+    }
+
+    private func dragPreview(_ idea: Idea) -> some View {
+        eventDragPreviewView(title: idea.text, color: eventColor(for: idea))
+            .onAppear {
+                draggedIdeaURI = ideaURI(idea)
+                draggedDurationMinutes = idea.scheduledDurationMinutes
+            }
     }
 
     private func appleCalendarDragPreview(_ event: AppleCalendarEvent) -> some View {
         let durationMinutes = max(Int(event.endDate.timeIntervalSince(event.startDate) / 60), minuteIncrement)
-        return HStack(spacing: 6) {
-            RoundedRectangle(cornerRadius: 1.5)
-                .fill(Color.fg.opacity(0.4))
-                .frame(width: 3, height: 18)
-            Text(event.title)
-                .font(.custom("Switzer-Medium", size: 12))
-                .foregroundStyle(Color.fg.opacity(0.7))
-                .lineLimit(1)
-        }
-        .padding(.horizontal, 10)
-        .padding(.vertical, 6)
-        .background(
-            RoundedRectangle(cornerRadius: 8)
-                .fill(Color.bgCard)
-                .shadow(color: .black.opacity(0.15), radius: 8, y: 4)
-        )
-        .onAppear {
-            draggedIdeaURI = nil
-            draggedDurationMinutes = durationMinutes
-        }
+        return eventDragPreviewView(title: event.title, color: Color.fg.opacity(0.4))
+            .onAppear {
+                draggedIdeaURI = nil
+                draggedDurationMinutes = durationMinutes
+            }
     }
 
     private func moveIdea(_ idea: Idea, toDate date: Date, hour: Int?, minute: Int? = nil) {
@@ -1761,9 +1705,7 @@ struct CalendarView: View {
             let timeStr: String? = {
                 guard let t = idea.dueTime, t.count == 5,
                       let h = Int(t.prefix(2)), let m = Int(t.suffix(2)) else { return nil }
-                let period = h < 12 ? "AM" : "PM"
-                let displayH = h == 0 ? 12 : (h > 12 ? h - 12 : h)
-                return "\(displayH):\(String(format: "%02d", m)) \(period)"
+                return formatTime12(hour: h, minute: m)
             }()
             return MonthEvent(
                 id: "idea-\(idea.persistentModelID)",
@@ -1782,9 +1724,7 @@ struct CalendarView: View {
         for event in appleEvents {
             let h = cal.component(.hour, from: event.startDate)
             let m = cal.component(.minute, from: event.startDate)
-            let period = h < 12 ? "AM" : "PM"
-            let displayH = h == 0 ? 12 : (h > 12 ? h - 12 : h)
-            let timeStr = "\(displayH):\(String(format: "%02d", m)) \(period)"
+            let timeStr = formatTime12(hour: h, minute: m)
             let sortKey = String(format: "%02d:%02d", h, m)
             events.append(MonthEvent(
                 id: "apple-\(event.id)",
