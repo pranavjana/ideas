@@ -6,6 +6,7 @@ struct SettingsView: View {
     @Environment(\.modelContext) private var modelContext
     @Query private var ideas: [Idea]
     @Query private var profiles: [UserProfile]
+    @AppStorage(UserSettings.displayNameKey) private var displayName = ""
     @ObservedObject private var appleCalendarManager = AppleCalendarManager.shared
     #if os(macOS)
     @StateObject private var updaterViewModel = UpdaterViewModel()
@@ -35,6 +36,19 @@ struct SettingsView: View {
                 VStack(alignment: .leading, spacing: 24) {
                     // About you section
                     sectionHeader("about you")
+
+                    Text("set the name the app should use in greetings and focus views.")
+                        .font(.custom("Switzer-Light", size: 12))
+                        .foregroundStyle(Color.fg.opacity(0.25))
+                        .lineSpacing(4)
+
+                    TextField("your name", text: $displayName)
+                        .textFieldStyle(.plain)
+                        .font(.custom("Switzer-Regular", size: 14))
+                        .foregroundStyle(Color.fg.opacity(0.8))
+                        .padding(12)
+                        .background(Color.fg.opacity(0.04))
+                        .clipShape(RoundedRectangle(cornerRadius: 8))
 
                     Text("tell the ai about yourself — what you study, what you do, what you're into. it uses this as context for everything.")
                         .font(.custom("Switzer-Light", size: 12))
@@ -241,7 +255,10 @@ struct SettingsView: View {
                         .background(Color.fg.opacity(0.04))
                         .clipShape(RoundedRectangle(cornerRadius: 8))
                         .onChange(of: apiKeyText) {
-                            _ = AIProviderKeychain.setAPIKey(apiKeyText)
+                            persistAPIKey()
+                        }
+                        .onSubmit {
+                            persistAPIKey()
                         }
                 }
                 #if os(macOS)
@@ -261,21 +278,26 @@ struct SettingsView: View {
                 bioText = profile?.bio ?? ""
                 tags = profile?.verifiedTags ?? []
                 tagColors = profile?.tagColors ?? [:]
-                apiKeyText = AIProviderKeychain.apiKey()
                 appleCalendarManager.refreshAuthorizationStatus()
                 didLoad = true
             }
+            apiKeyText = AIProviderKeychain.apiKey()
         }
         .onChange(of: tags) {
             ensureProfile().verifiedTags = tags
             try? modelContext.save()
         }
         .onDisappear {
+            persistAPIKey()
             try? modelContext.save()
         }
     }
 
     private static let appVersion: String = Bundle.main.infoDictionary?["CFBundleShortVersionString"] as? String ?? "1.0"
+
+    private func persistAPIKey() {
+        _ = AIProviderKeychain.setAPIKey(apiKeyText.trimmingCharacters(in: .whitespacesAndNewlines))
+    }
 
     private func sectionHeader(_ title: String) -> some View {
         Text(title)

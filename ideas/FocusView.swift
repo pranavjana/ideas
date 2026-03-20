@@ -6,6 +6,7 @@ struct FocusView: View {
     @Query(sort: \Idea.createdAt, order: .reverse) private var allIdeas: [Idea]
     @Query private var profiles: [UserProfile]
     @Environment(\.tagColors) private var tagColors
+    @AppStorage(UserSettings.displayNameKey) private var displayName = ""
     @ObservedObject private var appleCalendarManager = AppleCalendarManager.shared
 
     @Bindable var viewModel: FocusViewModel
@@ -270,11 +271,14 @@ struct FocusView: View {
     // MARK: - Focus Header
 
     private var focusHeader: some View {
-        VStack(alignment: .leading, spacing: 8) {
+        let explicitDisplayName = UserSettings.normalizedDisplayName(from: displayName)
+        let nameToShow = explicitDisplayName.isEmpty ? viewModel.userName : explicitDisplayName
+
+        return VStack(alignment: .leading, spacing: 8) {
             HStack {
                 VStack(alignment: .leading, spacing: 4) {
-                    let greeting = timeGreeting()
-                    Text(viewModel.userName.isEmpty ? "\(greeting)." : "\(greeting), \(viewModel.userName).")
+                    let greeting = timeGreeting().capitalized
+                    Text(nameToShow.isEmpty ? "\(greeting)." : "\(greeting), \(nameToShow).")
                         .font(.custom("Switzer-Semibold", size: 22))
                         .foregroundStyle(Color.fg.opacity(0.85))
 

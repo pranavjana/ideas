@@ -22,15 +22,20 @@ class FocusViewModel {
     private let maxToolIterations = 10
 
     struct FocusItem: Identifiable {
-        let id = UUID()
+        let id: String
         let idea: Idea
-        var subtasks: [(text: String, isDone: Bool)]
-        var isCompleted: Bool
+
+        var subtasks: [(text: String, isDone: Bool)] {
+            idea.parsedSubtasks.map { (text: $0.text, isDone: $0.isDone) }
+        }
+
+        var isCompleted: Bool {
+            idea.isDone
+        }
 
         init(idea: Idea) {
+            self.id = idea.persistentModelID.hashValue.description
             self.idea = idea
-            self.subtasks = idea.parsedSubtasks.map { (text: $0.text, isDone: $0.isDone) }
-            self.isCompleted = idea.isDone
         }
     }
 
@@ -54,6 +59,14 @@ class FocusViewModel {
     }
 
     private func loadUserName() {
+        let storedName = UserSettings.normalizedDisplayName(
+            from: UserDefaults.standard.string(forKey: UserSettings.displayNameKey) ?? ""
+        )
+        if !storedName.isEmpty {
+            userName = storedName
+            return
+        }
+
         let descriptor = FetchDescriptor<UserProfile>()
         if let profile = (try? modelContext.fetch(descriptor))?.first, !profile.bio.isEmpty {
             let bio = profile.bio.trimmingCharacters(in: .whitespacesAndNewlines)
@@ -61,13 +74,13 @@ class FocusViewModel {
                 let match = bio[range]
                 let words = match.split(separator: " ")
                 if let last = words.last {
-                    userName = String(last).lowercased()
+                    userName = String(last)
                     return
                 }
             }
             let firstWord = bio.split(separator: " ").first.map(String.init) ?? ""
             if firstWord.count <= 15 && !firstWord.isEmpty {
-                userName = firstWord.lowercased()
+                userName = firstWord
             }
         }
     }
@@ -110,20 +123,18 @@ class FocusViewModel {
 
     func toggleItem(_ item: FocusItem) {
         guard let idx = focusItems.firstIndex(where: { $0.id == item.id }) else { return }
-        focusItems[idx].isCompleted.toggle()
-        focusItems[idx].idea.isDone = focusItems[idx].isCompleted
+        focusItems[idx].idea.isDone.toggle()
         try? modelContext.save()
     }
 
     func toggleSubtask(item: FocusItem, subtaskIndex: Int) {
         guard let idx = focusItems.firstIndex(where: { $0.id == item.id }) else { return }
-        focusItems[idx].subtasks[subtaskIndex].isDone.toggle()
         focusItems[idx].idea.toggleSubtask(at: subtaskIndex)
         try? modelContext.save()
     }
 
     var completedCount: Int {
-        focusItems.filter { $0.isCompleted }.count
+        focusItems.filter { $0.idea.isDone }.count
     }
 
     var totalCount: Int {
